@@ -53,7 +53,7 @@ export default {
         process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY,
       countryStateCityApi: process.env.COUNTRY_STATE_CITY_API,
       eas: {
-        projectId: "your-project-id-here",
+        projectId: "d5153358-6939-40d5-95ac-f49b94a227e6",
       },
     },
   },

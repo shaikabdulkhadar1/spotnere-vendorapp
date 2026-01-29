@@ -67,17 +67,74 @@ export const verifyPassword = async (password, hash) => {
 };
 
 /**
+ * Create a place entry
+ * @param {Object} formData - Place data from form
+ * @returns {Promise<Object>} - Result object with success status and place data/error
+ */
+const createPlace = async (formData) => {
+  try {
+    // Prepare place data with address details and category information
+    const placeData = {
+      name: formData.businessName,
+      address: formData.address,
+      country: formData.country,
+      city: formData.city,
+      state: formData.state,
+      postal_code: formData.postalCode,
+      phone_number: formData.businessPhoneNumber,
+      category: formData.businessCategory,
+      sub_category: formData.businessSubCategory || null,
+    };
+
+    // Insert place into database
+    const { data, error } = await supabase
+      .from("places")
+      .insert([placeData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating place:", error);
+      throw error;
+    }
+
+    return {
+      success: true,
+      place: data,
+      placeId: data.id,
+    };
+  } catch (error) {
+    console.error("Error creating place:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to create place. Please try again.",
+    };
+  }
+};
+
+/**
  * Register a new vendor
  * @param {Object} formData - Vendor registration data
  * @returns {Promise<Object>} - Result object with success status and user/error
  */
 export const registerUser = async (formData) => {
   try {
-    // IMPORTANT: Hash password before storing - NEVER store plain text passwords
+    // Step 1: First create the place and get its UUID
+    const placeResult = await createPlace(formData);
+    if (!placeResult.success) {
+      return {
+        success: false,
+        error: placeResult.error || "Failed to create place. Please try again.",
+      };
+    }
+
+    const placeId = placeResult.placeId;
+
+    // Step 2: IMPORTANT: Hash password before storing - NEVER store plain text passwords
     // The password is hashed using SHA-256 with salt (10,000 iterations)
     const passwordHash = await hashPassword(formData.password);
 
-    // Prepare vendor data matching exact schema
+    // Step 3: Prepare vendor data matching exact schema
     // SECURITY: Only password_hash is stored in database, never the plain password
     const vendorData = {
       business_name: formData.businessName,
@@ -93,9 +150,10 @@ export const registerUser = async (formData) => {
       state: formData.state,
       country: formData.country,
       postal_code: formData.postalCode,
+      place_id: placeId, // Add the place UUID to vendors table
     };
 
-    // Insert vendor into database
+    // Step 4: Insert vendor into database with place_id
     const { data, error } = await supabase
       .from("vendors")
       .insert([vendorData])

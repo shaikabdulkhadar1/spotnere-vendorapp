@@ -90,17 +90,8 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
         "Ziplining",
         "Horse Riding",
       ],
-      Parks: [
-        "Water Amusement",
-        "Family Park",
-        "Zoological park",
-        "Kids park",
-      ],
-      Staycation: [
-        "Farm House",
-        "Resorts",
-        "5S Villa's",
-      ],
+      Parks: ["Water Amusement", "Family Park", "Zoological park", "Kids park"],
+      Staycation: ["Farm House", "Resorts", "5S Villa's"],
       "Tickets to Event": [
         "Football Match",
         "Cricket Match",
@@ -275,7 +266,10 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
         const result = await loginUser(formData.email, formData.password);
 
         if (!result.success) {
-          Alert.alert("Sign In Failed", result.error || "Failed to sign in. Please try again.");
+          Alert.alert(
+            "Sign In Failed",
+            result.error || "Failed to sign in. Please try again.",
+          );
           return;
         }
 
@@ -304,7 +298,7 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
           Alert.alert(
             "Success",
             "Account created successfully! Your account is pending approval.",
-            [{ text: "OK" }]
+            [{ text: "OK" }],
           );
         }
       }
@@ -838,9 +832,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 40,
+    paddingHorizontal: 10,
+    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingBottom: 30,
   },
   backButton: {
     position: "absolute",

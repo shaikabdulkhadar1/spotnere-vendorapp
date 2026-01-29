@@ -1,6 +1,6 @@
 /**
- * Home Screen Component (Dashboard)
- * Displays vendor dashboard
+ * Bookings Screen Component
+ * Displays vendor bookings
  */
 
 import React from "react";
@@ -8,40 +8,23 @@ import { StyleSheet, View, Text, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
-import { getCurrentUser } from "../utils/auth";
 
-const HomeScreen = () => {
-  const [user, setUser] = React.useState(null);
-
-  React.useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
-  };
-
+const BookingsScreen = () => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back!</Text>
-        <Text style={styles.businessName}>
-          {user?.business_name || "Vendor"}
-        </Text>
+        <Text style={styles.title}>Bookings</Text>
         <Text style={styles.description}>
-          Overview of your vendor dashboard and key metrics
+          View and manage all your customer bookings and reservations
         </Text>
       </View>
 
       <View style={styles.section}>
         <View style={styles.card}>
-          <Ionicons name="business" size={48} color={colors.primary} />
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            Dashboard
-          </Text>
+          <Ionicons name="calendar" size={48} color={colors.primary} />
+          <Text style={styles.cardTitle}>Your Bookings</Text>
           <Text style={styles.cardText}>
-            Your vendor dashboard is ready. More features coming soon!
+            View and manage all your bookings here.
           </Text>
         </View>
       </View>
@@ -62,13 +45,7 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 32,
   },
-  greeting: {
-    fontSize: 16,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  businessName: {
+  title: {
     fontSize: 28,
     fontFamily: fonts.bold,
     color: colors.text,
@@ -100,8 +77,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 16,
     marginBottom: 8,
-    textAlign: "center",
-    width: "100%",
   },
   cardText: {
     fontSize: 14,
@@ -111,4 +86,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default BookingsScreen;
