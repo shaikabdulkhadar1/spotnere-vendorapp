@@ -63,6 +63,21 @@ const VenduDetailsScreen = () => {
     setSelectedStateCode(stateCode);
   }, [editFormData.country, editFormData.state, isEditing]);
 
+  const normalizeAmenities = (value) => {
+    if (Array.isArray(value)) {
+      return value.filter(Boolean).join(", ");
+    }
+    return value || "";
+  };
+
+  const parseAmenitiesInput = (value) => {
+    if (!value || !value.trim()) return null;
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const loadData = async () => {
     try {
       const currentUser = await getCurrentUser();
@@ -89,8 +104,6 @@ const VenduDetailsScreen = () => {
             state: placeData.state || "",
             country: placeData.country || "",
             postal_code: placeData.postal_code || "",
-            latitude: placeData.latitude?.toString() || "",
-            longitude: placeData.longitude?.toString() || "",
             location_map_link: placeData.location_map_link || "",
             phone_number: placeData.phone_number || "",
             website: placeData.website || "",
@@ -98,7 +111,7 @@ const VenduDetailsScreen = () => {
             review_count: placeData.review_count?.toString() || "",
             avg_price: placeData.avg_price?.toString() || "",
             hours: placeData.hours || "",
-            amenities: placeData.amenities || "",
+            amenities: normalizeAmenities(placeData.amenities),
           });
         }
       }
@@ -129,8 +142,6 @@ const VenduDetailsScreen = () => {
         state: place.state || "",
         country: place.country || "",
         postal_code: place.postal_code || "",
-        latitude: place.latitude?.toString() || "",
-        longitude: place.longitude?.toString() || "",
         location_map_link: place.location_map_link || "",
         phone_number: place.phone_number || "",
         website: place.website || "",
@@ -138,7 +149,7 @@ const VenduDetailsScreen = () => {
         review_count: place.review_count?.toString() || "",
         avg_price: place.avg_price?.toString() || "",
         hours: place.hours || "",
-        amenities: place.amenities || "",
+        amenities: normalizeAmenities(place.amenities),
       });
     }
     setIsEditing(false);
@@ -161,12 +172,6 @@ const VenduDetailsScreen = () => {
         state: editFormData.state || null,
         country: editFormData.country || null,
         postal_code: editFormData.postal_code || null,
-        latitude: editFormData.latitude
-          ? parseFloat(editFormData.latitude)
-          : null,
-        longitude: editFormData.longitude
-          ? parseFloat(editFormData.longitude)
-          : null,
         location_map_link: editFormData.location_map_link || null,
         phone_number: editFormData.phone_number || null,
         website: editFormData.website || null,
@@ -178,7 +183,7 @@ const VenduDetailsScreen = () => {
           ? parseFloat(editFormData.avg_price)
           : null,
         hours: editFormData.hours || null,
-        amenities: editFormData.amenities || null,
+        amenities: parseAmenitiesInput(editFormData.amenities),
         updated_at: new Date().toISOString(),
         last_updated: new Date().toISOString(),
       };
@@ -585,18 +590,6 @@ const VenduDetailsScreen = () => {
               )}
               {renderEditableField("Postal Code", "postal_code", "mail")}
               {renderEditableField(
-                "Latitude",
-                "latitude",
-                "navigate",
-                "numeric",
-              )}
-              {renderEditableField(
-                "Longitude",
-                "longitude",
-                "navigate-outline",
-                "numeric",
-              )}
-              {renderEditableField(
                 "Location Map Link",
                 "location_map_link",
                 "map-outline",
@@ -618,12 +611,21 @@ const VenduDetailsScreen = () => {
               )}
 
               {/* Business Information */}
-              {renderEditableField("Rating", "rating", "star", "decimal-pad")}
+              {renderEditableField(
+                "Rating",
+                "rating",
+                "star",
+                "decimal-pad",
+                false,
+                false,
+              )}
               {renderEditableField(
                 "Review Count",
                 "review_count",
                 "chatbubbles",
                 "numeric",
+                false,
+                false,
               )}
               {renderEditableField(
                 "Average Price",
@@ -868,6 +870,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fonts.semiBold,
     color: colors.text,
+  },
+  detailValueDisabled: {
+    color: colors.textSecondary,
   },
   detailInput: {
     fontSize: 16,
