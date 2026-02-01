@@ -51,6 +51,8 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
   const [showCityModal, setShowCityModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("");
+  const [selectedStateCode, setSelectedStateCode] = useState("");
 
   // Business category options
   const businessCategories = [
@@ -124,18 +126,19 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
 
   // Get countries, states, and cities from library
   const countries = Country.getAllCountries();
-  const states = formData.country
-    ? State.getStatesOfCountry(formData.country)
+  const states = selectedCountryCode
+    ? State.getStatesOfCountry(selectedCountryCode)
     : [];
   const cities =
-    formData.country && formData.state
-      ? City.getCitiesOfState(formData.country, formData.state)
+    selectedCountryCode && selectedStateCode
+      ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
       : [];
 
   // Reset state and city when country changes
   useEffect(() => {
     if (formData.country) {
       setFormData((prev) => ({ ...prev, state: "", city: "" }));
+      setSelectedStateCode("");
     }
   }, [formData.country]);
 
@@ -174,6 +177,21 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     } else if (field === "businessSubCategory") {
       setShowSubCategoryModal(false);
     }
+  };
+
+  const handleCountrySelect = (country) => {
+    setSelectedCountryCode(country.isoCode);
+    setSelectedStateCode("");
+    handleDropdownSelect("country", country.name, country.name);
+  };
+
+  const handleStateSelect = (state) => {
+    setSelectedStateCode(state.isoCode);
+    handleDropdownSelect("state", state.name, state.name);
+  };
+
+  const handleCitySelect = (city) => {
+    handleDropdownSelect("city", city.name, city.name);
   };
 
   const validateForm = () => {
@@ -329,6 +347,8 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
       country: "",
       postalCode: "",
     });
+    setSelectedCountryCode("");
+    setSelectedStateCode("");
     setErrors({});
   };
 
@@ -426,6 +446,7 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     getValue,
     getDisplayValue,
     disabled = false,
+    onSelect = null,
   ) => {
     const hasError = errors[field];
     const selectedValue = formData[field];
@@ -520,7 +541,9 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
                           isSelected && styles.modalItemSelected,
                         ]}
                         onPress={() =>
-                          handleDropdownSelect(field, value, display)
+                          onSelect
+                            ? onSelect(item)
+                            : handleDropdownSelect(field, value, display)
                         }
                       >
                         <Text
@@ -724,8 +747,10 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
                 countries,
                 showCountryModal,
                 setShowCountryModal,
-                (item) => item.isoCode,
                 (item) => item.name,
+                (item) => item.name,
+                false,
+                handleCountrySelect,
               )}
 
               {/* State Dropdown */}
@@ -737,9 +762,10 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
                 states,
                 showStateModal,
                 setShowStateModal,
-                (item) => item.isoCode,
+                (item) => item.name,
                 (item) => item.name,
                 !formData.country,
+                handleStateSelect,
               )}
 
               {/* City Dropdown */}
@@ -754,6 +780,7 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
                 (item) => item.name,
                 (item) => item.name,
                 !formData.state,
+                handleCitySelect,
               )}
 
               {/* Postal Code */}

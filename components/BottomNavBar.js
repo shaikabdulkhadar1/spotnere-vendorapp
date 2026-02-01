@@ -17,7 +17,6 @@ import {
   CalendarDays,
   Store,
   User,
-  Smartphone,
 } from "lucide-react-native";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
@@ -34,11 +33,6 @@ const BottomNavBar = ({ activeTab, onTabChange }) => {
       id: "venduDetails",
       label: "Vendu Details",
       icon: Store,
-    },
-    {
-      id: "liveView",
-      label: "Live View",
-      icon: Smartphone,
     },
     {
       id: "profile",

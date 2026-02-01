@@ -14,14 +14,16 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
-import { Pen, X, Check } from "lucide-react-native";
 import { fonts } from "../constants/fonts";
 import { getCurrentUser } from "../utils/auth";
 import { supabase } from "../config/supabase";
+import { Country, State, City } from "country-state-city";
 
 const { width } = Dimensions.get("window");
 
@@ -33,10 +35,33 @@ const VenduDetailsScreen = () => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [editFormData, setEditFormData] = React.useState({});
+  const [showCountryModal, setShowCountryModal] = React.useState(false);
+  const [showStateModal, setShowStateModal] = React.useState(false);
+  const [showCityModal, setShowCityModal] = React.useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = React.useState("");
+  const [selectedStateCode, setSelectedStateCode] = React.useState("");
 
   React.useEffect(() => {
     loadData();
   }, []);
+
+  React.useEffect(() => {
+    if (!isEditing) return;
+    const countryCode =
+      Country.getAllCountries().find(
+        (item) => item.name === editFormData.country,
+      )?.isoCode || "";
+    setSelectedCountryCode(countryCode);
+    if (!countryCode) {
+      setSelectedStateCode("");
+      return;
+    }
+    const stateCode =
+      State.getStatesOfCountry(countryCode).find(
+        (item) => item.name === editFormData.state,
+      )?.isoCode || "";
+    setSelectedStateCode(stateCode);
+  }, [editFormData.country, editFormData.state, isEditing]);
 
   const loadData = async () => {
     try {
@@ -120,7 +145,8 @@ const VenduDetailsScreen = () => {
   };
 
   const handleSave = async () => {
-    if (!place || !user?.place_id) return;
+    const placeId = user?.place_id || place?.id;
+    if (!placeId) return;
 
     setIsSaving(true);
     try {
@@ -153,12 +179,14 @@ const VenduDetailsScreen = () => {
           : null,
         hours: editFormData.hours || null,
         amenities: editFormData.amenities || null,
+        updated_at: new Date().toISOString(),
+        last_updated: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
         .from("places")
         .update(updateData)
-        .eq("id", user.place_id)
+        .eq("id", placeId)
         .select()
         .single();
 
@@ -181,12 +209,38 @@ const VenduDetailsScreen = () => {
     setEditFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleDropdownSelect = (field, value, code = "") => {
+    setEditFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "country") {
+      setShowCountryModal(false);
+      setSelectedCountryCode(code);
+      setSelectedStateCode("");
+      setEditFormData((prev) => ({ ...prev, state: "", city: "" }));
+    } else if (field === "state") {
+      setShowStateModal(false);
+      setSelectedStateCode(code);
+      setEditFormData((prev) => ({ ...prev, city: "" }));
+    } else if (field === "city") {
+      setShowCityModal(false);
+    }
+  };
+
+  const countries = Country.getAllCountries();
+  const states = selectedCountryCode
+    ? State.getStatesOfCountry(selectedCountryCode)
+    : [];
+  const cities =
+    selectedCountryCode && selectedStateCode
+      ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
+      : [];
+
   const renderEditableField = (
     label,
     field,
     icon,
     keyboardType = "default",
     multiline = false,
+    editable = true,
   ) => {
     const getDisplayValue = () => {
       const value = place[field];
@@ -210,22 +264,163 @@ const VenduDetailsScreen = () => {
         <View style={styles.detailContent}>
           <Text style={styles.detailLabel}>{label}</Text>
           {isEditing ? (
-            <TextInput
-              style={[
-                styles.detailInput,
-                multiline && styles.detailInputMultiline,
-              ]}
-              value={editFormData[field] || ""}
-              onChangeText={(value) => handleFieldChange(field, value)}
-              placeholder={`Enter ${label.toLowerCase()}`}
-              placeholderTextColor={colors.textSecondary}
-              keyboardType={keyboardType}
-              multiline={multiline}
-              numberOfLines={multiline ? 3 : 1}
-            />
+            editable ? (
+              <TextInput
+                style={[
+                  styles.detailInput,
+                  multiline && styles.detailInputMultiline,
+                ]}
+                value={editFormData[field] || ""}
+                onChangeText={(value) => handleFieldChange(field, value)}
+                placeholder={`Enter ${label.toLowerCase()}`}
+                placeholderTextColor={colors.textSecondary}
+                keyboardType={keyboardType}
+                multiline={multiline}
+                numberOfLines={multiline ? 3 : 1}
+              />
+            ) : (
+              <Text style={[styles.detailValue, styles.detailValueDisabled]}>
+                {getDisplayValue()}
+              </Text>
+            )
           ) : (
             <Text style={styles.detailValue} numberOfLines={multiline ? 3 : 1}>
               {getDisplayValue()}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderLocationDropdown = (
+    label,
+    field,
+    icon,
+    options,
+    showModal,
+    setShowModal,
+    getValue,
+    getDisplayValue,
+    disabled = false,
+  ) => {
+    const selectedValue = editFormData[field];
+    const selectedOption = options.find(
+      (item) => getValue(item) === selectedValue,
+    );
+    const displayText = selectedOption
+      ? getDisplayValue(selectedOption)
+      : "Add details";
+
+    return (
+      <View style={styles.detailRow}>
+        <Ionicons name={icon} size={20} color={colors.primary} />
+        <View style={styles.detailContent}>
+          <Text style={styles.detailLabel}>{label}</Text>
+          {isEditing ? (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.detailDropdown,
+                  disabled && styles.detailDropdownDisabled,
+                ]}
+                onPress={() => !disabled && setShowModal(true)}
+                disabled={disabled}
+              >
+                <Text
+                  style={[
+                    styles.detailDropdownText,
+                    !selectedValue && styles.detailDropdownPlaceholder,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {displayText}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              <Modal
+                visible={showModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowModal(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>Select {label}</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowModal(false)}
+                        style={styles.modalCloseButton}
+                      >
+                        <Ionicons name="close" size={24} color={colors.text} />
+                      </TouchableOpacity>
+                    </View>
+                    {options.length === 0 ? (
+                      <View style={styles.modalEmpty}>
+                        <Text style={styles.modalEmptyText}>
+                          {disabled
+                            ? "Please select a country first"
+                            : "No options available"}
+                        </Text>
+                      </View>
+                    ) : (
+                      <FlatList
+                        data={options}
+                        keyExtractor={(item, index) =>
+                          getValue(item) || `option-${index}`
+                        }
+                        renderItem={({ item }) => {
+                          const value = getValue(item);
+                          const display = getDisplayValue(item);
+                          const isSelected = selectedValue === value;
+
+                          return (
+                            <TouchableOpacity
+                              style={[
+                                styles.modalItem,
+                                isSelected && styles.modalItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleDropdownSelect(
+                                  field,
+                                  value,
+                                  item.isoCode || "",
+                                )
+                              }
+                            >
+                              <Text
+                                style={[
+                                  styles.modalItemText,
+                                  isSelected && styles.modalItemTextSelected,
+                                ]}
+                              >
+                                {display}
+                              </Text>
+                              {isSelected && (
+                                <Ionicons
+                                  name="checkmark"
+                                  size={20}
+                                  color={colors.primary}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        }}
+                        style={styles.modalList}
+                      />
+                    )}
+                  </View>
+                </View>
+              </Modal>
+            </>
+          ) : (
+            <Text style={styles.detailValue}>
+              {place[field] || "Add details"}
             </Text>
           )}
         </View>
@@ -285,7 +480,11 @@ const VenduDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Place Details</Text>
           {!isEditing ? (
             <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-              <Pen size={20} color={colors.primary} />
+              <Ionicons
+                name="create-outline"
+                size={20}
+                color={colors.primary}
+              />
             </TouchableOpacity>
           ) : (
             <View style={styles.editActions}>
@@ -294,9 +493,7 @@ const VenduDetailsScreen = () => {
                 style={[styles.actionButton, styles.cancelButton]}
                 disabled={isSaving}
               >
-                <Text style={styles.cancelButtonText}>
-                  <X />
-                </Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSave}
@@ -306,9 +503,7 @@ const VenduDetailsScreen = () => {
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.saveButtonText}>
-                    <Check color="#FFFFFF" />
-                  </Text>
+                  <Text style={styles.saveButtonText}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -356,9 +551,38 @@ const VenduDetailsScreen = () => {
                 "default",
                 true,
               )}
-              {renderEditableField("City", "city", "map")}
-              {renderEditableField("State", "state", "location-outline")}
-              {renderEditableField("Country", "country", "globe")}
+              {renderLocationDropdown(
+                "Country",
+                "country",
+                "globe",
+                countries,
+                showCountryModal,
+                setShowCountryModal,
+                (item) => item.name,
+                (item) => item.name,
+              )}
+              {renderLocationDropdown(
+                "State",
+                "state",
+                "location-outline",
+                states,
+                showStateModal,
+                setShowStateModal,
+                (item) => item.name,
+                (item) => item.name,
+                !editFormData.country,
+              )}
+              {renderLocationDropdown(
+                "City",
+                "city",
+                "map",
+                cities,
+                showCityModal,
+                setShowCityModal,
+                (item) => item.name,
+                (item) => item.name,
+                !editFormData.state,
+              )}
               {renderEditableField("Postal Code", "postal_code", "mail")}
               {renderEditableField(
                 "Latitude",
@@ -533,9 +757,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   editButton: {
-    padding: 10,
-    borderRadius: 50,
-    backgroundColor: colors.cardBackground,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
   },
   editActions: {
     flexDirection: "row",
@@ -660,6 +884,31 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
   },
+  detailDropdown: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 40,
+  },
+  detailDropdownText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: fonts.regular,
+    color: colors.text,
+    marginRight: 8,
+  },
+  detailDropdownPlaceholder: {
+    color: colors.textSecondary,
+  },
+  detailDropdownDisabled: {
+    opacity: 0.6,
+  },
   noDataContainer: {
     alignItems: "center",
     paddingVertical: 40,
@@ -669,6 +918,69 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
     marginTop: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: colors.cardBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+    color: colors.text,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalList: {
+    maxHeight: 400,
+  },
+  modalItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalItemSelected: {
+    backgroundColor: colors.surface,
+  },
+  modalItemText: {
+    fontSize: 16,
+    fontFamily: fonts.regular,
+    color: colors.text,
+  },
+  modalItemTextSelected: {
+    fontFamily: fonts.semiBold,
+    color: colors.primary,
+  },
+  modalEmpty: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalEmptyText: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
   // Gallery Section
   galleryContainer: {
@@ -687,7 +999,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 10,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   addButton: {
     flexDirection: "row",
