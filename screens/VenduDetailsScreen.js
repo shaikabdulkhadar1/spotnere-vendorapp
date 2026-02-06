@@ -21,16 +21,15 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
-import { getCurrentUser } from "../utils/auth";
 import { supabase } from "../config/supabase";
 import { Country, State, City } from "country-state-city";
+import { useApp } from "../contexts/AppContext";
 
 const { width } = Dimensions.get("window");
 
 const VenduDetailsScreen = () => {
-  const [user, setUser] = React.useState(null);
-  const [place, setPlace] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const { user, placeData, loadPlace } = useApp();
+  const [loading, setLoading] = React.useState(false);
   const [galleryImages, setGalleryImages] = React.useState([]);
   const [isEditing, setIsEditing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -42,8 +41,37 @@ const VenduDetailsScreen = () => {
   const [selectedStateCode, setSelectedStateCode] = React.useState("");
 
   React.useEffect(() => {
-    loadData();
-  }, []);
+    if (user?.place_id) {
+      // Check cache first, then fetch if needed
+      loadPlace(false);
+    }
+  }, [user?.place_id, loadPlace]);
+
+  // Initialize form data when placeData is available
+  React.useEffect(() => {
+    if (placeData) {
+      setEditFormData({
+        name: placeData.name || "",
+        category: placeData.category || "",
+        sub_category: placeData.sub_category || "",
+        description: placeData.description || "",
+        address: placeData.address || "",
+        city: placeData.city || "",
+        state: placeData.state || "",
+        country: placeData.country || "",
+        postal_code: placeData.postal_code || "",
+        location_map_link: placeData.location_map_link || "",
+        phone_number: placeData.phone_number || "",
+        website: placeData.website || "",
+        rating: placeData.rating?.toString() || "",
+        review_count: placeData.review_count?.toString() || "",
+        avg_price: placeData.avg_price?.toString() || "",
+        hours: placeData.hours || "",
+        amenities: normalizeAmenities(placeData.amenities),
+      });
+      setLoading(false);
+    }
+  }, [placeData]);
 
   React.useEffect(() => {
     if (!isEditing) return;
@@ -78,85 +106,41 @@ const VenduDetailsScreen = () => {
       .filter(Boolean);
   };
 
-  const loadData = async () => {
-    try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-
-      if (currentUser?.place_id) {
-        // Fetch place details
-        const { data: placeData, error: placeError } = await supabase
-          .from("places")
-          .select("*")
-          .eq("id", currentUser.place_id)
-          .single();
-
-        if (!placeError && placeData) {
-          setPlace(placeData);
-          // Initialize edit form data
-          setEditFormData({
-            name: placeData.name || "",
-            category: placeData.category || "",
-            sub_category: placeData.sub_category || "",
-            description: placeData.description || "",
-            address: placeData.address || "",
-            city: placeData.city || "",
-            state: placeData.state || "",
-            country: placeData.country || "",
-            postal_code: placeData.postal_code || "",
-            location_map_link: placeData.location_map_link || "",
-            phone_number: placeData.phone_number || "",
-            website: placeData.website || "",
-            rating: placeData.rating?.toString() || "",
-            review_count: placeData.review_count?.toString() || "",
-            avg_price: placeData.avg_price?.toString() || "",
-            hours: placeData.hours || "",
-            amenities: normalizeAmenities(placeData.amenities),
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Banner image from place data
-  const bannerImage = place?.banner_image_link || null;
+  const bannerImage = placeData?.banner_image_link || null;
 
   const handleEdit = () => {
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    // Reset form data to original place data
-    if (place) {
+    // Reset form data to original place data from cache
+    if (placeData) {
       setEditFormData({
-        name: place.name || "",
-        category: place.category || "",
-        sub_category: place.sub_category || "",
-        description: place.description || "",
-        address: place.address || "",
-        city: place.city || "",
-        state: place.state || "",
-        country: place.country || "",
-        postal_code: place.postal_code || "",
-        location_map_link: place.location_map_link || "",
-        phone_number: place.phone_number || "",
-        website: place.website || "",
-        rating: place.rating?.toString() || "",
-        review_count: place.review_count?.toString() || "",
-        avg_price: place.avg_price?.toString() || "",
-        hours: place.hours || "",
-        amenities: normalizeAmenities(place.amenities),
+        name: placeData.name || "",
+        category: placeData.category || "",
+        sub_category: placeData.sub_category || "",
+        description: placeData.description || "",
+        address: placeData.address || "",
+        city: placeData.city || "",
+        state: placeData.state || "",
+        country: placeData.country || "",
+        postal_code: placeData.postal_code || "",
+        location_map_link: placeData.location_map_link || "",
+        phone_number: placeData.phone_number || "",
+        website: placeData.website || "",
+        rating: placeData.rating?.toString() || "",
+        review_count: placeData.review_count?.toString() || "",
+        avg_price: placeData.avg_price?.toString() || "",
+        hours: placeData.hours || "",
+        amenities: normalizeAmenities(placeData.amenities),
       });
     }
     setIsEditing(false);
   };
 
   const handleSave = async () => {
-    const placeId = user?.place_id || place?.id;
+    const placeId = user?.place_id || placeData?.id;
     if (!placeId) return;
 
     setIsSaving(true);
@@ -199,9 +183,10 @@ const VenduDetailsScreen = () => {
         throw error;
       }
 
-      setPlace(data);
       setIsEditing(false);
       Alert.alert("Success", "Place details updated successfully!");
+      // Refresh place data cache
+      await loadPlace(true);
     } catch (error) {
       console.error("Error updating place:", error);
       Alert.alert("Error", "Failed to update place details. Please try again.");
@@ -248,7 +233,7 @@ const VenduDetailsScreen = () => {
     editable = true,
   ) => {
     const getDisplayValue = () => {
-      const value = place[field];
+      const value = placeData?.[field];
       if (value === null || value === undefined || value === "") {
         return "Add details";
       }
@@ -425,7 +410,7 @@ const VenduDetailsScreen = () => {
             </>
           ) : (
             <Text style={styles.detailValue}>
-              {place[field] || "Add details"}
+              {placeData?.[field] || "Add details"}
             </Text>
           )}
         </View>
@@ -515,7 +500,7 @@ const VenduDetailsScreen = () => {
           )}
         </View>
         <View style={styles.detailsCard}>
-          {place ? (
+          {placeData ? (
             <>
               {/* Basic Information */}
               <View style={styles.detailRow}>
@@ -532,7 +517,7 @@ const VenduDetailsScreen = () => {
                     />
                   ) : (
                     <Text style={styles.detailValue}>
-                      {place.name || "Add details"}
+                      {placeData.name || "Add details"}
                     </Text>
                   )}
                 </View>

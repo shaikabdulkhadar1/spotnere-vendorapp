@@ -143,7 +143,7 @@ export const registerUser = async (formData) => {
       vendor_full_name: formData.vendorFullName,
       business_phone_number: formData.businessPhoneNumber,
       vendor_phone_number: formData.vendorPhoneNumber,
-      business_email: formData.email.toLowerCase().trim(),
+      vendor_email: formData.email.toLowerCase().trim(),
       password_hash: passwordHash, // HASHED password only - never plain text
       business_address: formData.address,
       city: formData.city,
@@ -157,7 +157,9 @@ export const registerUser = async (formData) => {
     const { data, error } = await supabase
       .from("vendors")
       .insert([vendorData])
-      .select()
+      .select(
+        "id, business_name, vendor_full_name, business_phone_number, vendor_phone_number, vendor_email, password_hash, business_address, city, state, country, postal_code, place_id, created_at, updated_at"
+      )
       .single();
 
     if (error) {
@@ -197,11 +199,13 @@ export const registerUser = async (formData) => {
  */
 export const loginUser = async (email, password) => {
   try {
-    // Fetch vendor by business_email
+    // Fetch vendor by vendor_email (excluding business_category and business_sub_category)
     const { data, error } = await supabase
       .from("vendors")
-      .select("*")
-      .eq("business_email", email.toLowerCase().trim())
+      .select(
+        "id, business_name, vendor_full_name, business_phone_number, vendor_phone_number, vendor_email, password_hash, business_address, city, state, country, postal_code, place_id, created_at, updated_at"
+      )
+      .eq("vendor_email", email.toLowerCase().trim())
       .single();
 
     if (error || !data) {

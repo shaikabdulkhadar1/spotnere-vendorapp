@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
 import { useApp } from "../contexts/AppContext";
+import NotificationsModal from "../components/NotificationsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -27,6 +28,9 @@ const HomeScreen = () => {
   const [revenueTimeRange, setRevenueTimeRange] = React.useState("Past month");
   const [revenueData, setRevenueData] = React.useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = React.useState(null);
+  const [showNotificationsModal, setShowNotificationsModal] = React.useState(false);
+  const notificationButtonRef = React.useRef(null);
+  const [notificationButtonLayout, setNotificationButtonLayout] = React.useState(null);
 
   // Load data when HomeScreen mounts - checks cache first
   React.useEffect(() => {
@@ -136,16 +140,41 @@ const HomeScreen = () => {
     return `$${Math.round(amount)}`;
   };
 
+  const handleNotificationPress = () => {
+    setShowNotificationsModal(true);
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back!</Text>
-        <Text style={styles.businessName}>
-          {user?.business_name || "Vendor"}
-        </Text>
-        <Text style={styles.description}>
-          Overview of your vendor dashboard and key metrics
-        </Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.greeting}>Welcome back!</Text>
+          <Text style={styles.businessName}>
+            {user?.business_name || "Vendor"}
+          </Text>
+          <Text style={styles.description}>
+            Overview of your vendor dashboard and key metrics
+          </Text>
+        </View>
+        <View
+          ref={notificationButtonRef}
+          onLayout={(event) => {
+            notificationButtonRef.current?.measureInWindow((x, y, width, height) => {
+              setNotificationButtonLayout({ x, y, width, height });
+            });
+          }}
+        >
+          <TouchableOpacity
+            onPress={handleNotificationPress}
+            style={styles.notificationButton}
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -464,6 +493,13 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        visible={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        notificationButtonLayout={notificationButtonLayout}
+      />
     </ScrollView>
   );
 };
@@ -479,7 +515,17 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 32,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  notificationButton: {
+    padding: 8,
+    marginTop: 4,
   },
   greeting: {
     fontSize: 16,

@@ -21,6 +21,8 @@ const CACHE_KEYS = {
   USER: "@app_cache_user",
   BOOKINGS: "@app_cache_bookings",
   BOOKINGS_TIMESTAMP: "@app_cache_bookings_timestamp",
+  PLACE: "@app_cache_place",
+  PLACE_TIMESTAMP: "@app_cache_place_timestamp",
 };
 
 // Cache expiration time (5 minutes)
@@ -35,6 +37,7 @@ export const AppProvider = ({ children }) => {
     loading: true,
     bookings: [],
   });
+  const [placeData, setPlaceData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load user data
@@ -312,6 +315,77 @@ export const AppProvider = ({ children }) => {
     }
   }, [checkBookingsCache, loadBookings]);
 
+  // Check cache for place data
+  const checkPlaceCache = useCallback(async () => {
+    try {
+      const cachedPlace = await AsyncStorage.getItem(CACHE_KEYS.PLACE);
+      const cachedTimestamp = await AsyncStorage.getItem(
+        CACHE_KEYS.PLACE_TIMESTAMP
+      );
+
+      if (cachedPlace && cachedTimestamp) {
+        const timestamp = parseInt(cachedTimestamp);
+        const now = Date.now();
+
+        // Use cache if it's still valid
+        if (now - timestamp < CACHE_EXPIRY) {
+          const parsedPlace = JSON.parse(cachedPlace);
+          setPlaceData(parsedPlace);
+          return true; // Cache hit
+        }
+      }
+      return false; // Cache miss
+    } catch (error) {
+      console.error("Error checking place cache:", error);
+      return false;
+    }
+  }, []);
+
+  // Load place data with caching
+  const loadPlace = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        if (!user?.place_id) {
+          setPlaceData(null);
+          return;
+        }
+
+        // Check cache first if not forcing refresh
+        if (!forceRefresh) {
+          const cacheHit = await checkPlaceCache();
+          if (cacheHit) {
+            return; // Use cached data
+          }
+        }
+
+        // Fetch fresh place data
+        const { data, error } = await supabase
+          .from("places")
+          .select("*")
+          .eq("id", user.place_id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching place data:", error);
+          return;
+        }
+
+        if (data) {
+          setPlaceData(data);
+          // Cache the place data
+          await AsyncStorage.setItem(CACHE_KEYS.PLACE, JSON.stringify(data));
+          await AsyncStorage.setItem(
+            CACHE_KEYS.PLACE_TIMESTAMP,
+            Date.now().toString()
+          );
+        }
+      } catch (error) {
+        console.error("Error loading place:", error);
+      }
+    },
+    [user?.place_id, checkPlaceCache]
+  );
+
   // Clear cache
   const clearCache = useCallback(async () => {
     try {
@@ -319,6 +393,8 @@ export const AppProvider = ({ children }) => {
         CACHE_KEYS.USER,
         CACHE_KEYS.BOOKINGS,
         CACHE_KEYS.BOOKINGS_TIMESTAMP,
+        CACHE_KEYS.PLACE,
+        CACHE_KEYS.PLACE_TIMESTAMP,
       ]);
     } catch (error) {
       console.error("Error clearing cache:", error);
@@ -340,9 +416,11 @@ export const AppProvider = ({ children }) => {
   const value = {
     user,
     bookingsData,
+    placeData,
     isLoading,
     loadUser,
     loadBookings,
+    loadPlace,
     loadHomeScreenData,
     refreshData,
     clearCache,

@@ -57,17 +57,17 @@ const BookingsListScreen = ({ onBack }) => {
     if (!bookingDate) return "unknown";
     const date = new Date(bookingDate);
     const now = new Date();
-    
+
     // Check if booking is today
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(now);
     todayEnd.setHours(23, 59, 59, 999);
-    
+
     if (date >= todayStart && date <= todayEnd) {
       return "today";
     }
-    
+
     if (date >= now) return "upcoming";
     return "past";
   };
@@ -151,7 +151,9 @@ const BookingsListScreen = ({ onBack }) => {
             )}
             {isToday && (
               <View style={[styles.statusBadge, styles.statusBadgeToday]}>
-                <Text style={[styles.statusBadgeText, styles.statusBadgeTextToday]}>
+                <Text
+                  style={[styles.statusBadgeText, styles.statusBadgeTextToday]}
+                >
                   Today
                 </Text>
               </View>
@@ -193,6 +195,8 @@ const BookingsListScreen = ({ onBack }) => {
         <View style={styles.headerContent}>
           <Text style={styles.title}>Your Bookings</Text>
         </View>
+        {/* Spacer to balance the back button */}
+        {onBack && <View style={styles.backButtonSpacer} />}
       </View>
 
       {/* Bookings List */}
@@ -233,17 +237,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     padding: 10,
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: colors.background,
   },
   backButton: {
-    marginRight: 12,
+    position: "absolute",
+    left: 10,
+    top: 20,
     padding: 4,
+  },
+  backButtonSpacer: {
+    width: 32,
   },
   headerContent: {
     flex: 1,
+    alignItems: "center",
   },
   title: {
     fontSize: 22,

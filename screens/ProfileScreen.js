@@ -18,10 +18,18 @@ import { fonts } from "../constants/fonts";
 import { logout } from "../utils/auth";
 import { useApp } from "../contexts/AppContext";
 import BookingsListScreen from "../components/BookingsListScreen";
+import ManageProfileScreen from "../components/ManageProfileScreen";
+import PasswordSecurityScreen from "../components/PasswordSecurityScreen";
+import AboutUsScreen from "../components/AboutUsScreen";
+import HelpCenterScreen from "../components/HelpCenterScreen";
 
 const ProfileScreen = ({ onLogout }) => {
   const { user } = useApp();
   const [showBookingsList, setShowBookingsList] = React.useState(false);
+  const [showManageProfile, setShowManageProfile] = React.useState(false);
+  const [showPasswordSecurity, setShowPasswordSecurity] = React.useState(false);
+  const [showAboutUs, setShowAboutUs] = React.useState(false);
+  const [showHelpCenter, setShowHelpCenter] = React.useState(false);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -47,6 +55,68 @@ const ProfileScreen = ({ onLogout }) => {
     setShowBookingsList(false);
   };
 
+  const handleManageProfilePress = () => {
+    setShowManageProfile(true);
+  };
+
+  const handleBackFromManageProfile = () => {
+    setShowManageProfile(false);
+  };
+
+  const handlePasswordSecurityPress = () => {
+    setShowPasswordSecurity(true);
+  };
+
+  const handleBackFromPasswordSecurity = () => {
+    setShowPasswordSecurity(false);
+  };
+
+  const handleLanguagePress = () => {
+    Alert.alert(
+      "Language",
+      "The app is only available in English for now.",
+      [{ text: "OK" }]
+    );
+  };
+
+  const handleAboutUsPress = () => {
+    setShowAboutUs(true);
+  };
+
+  const handleBackFromAboutUs = () => {
+    setShowAboutUs(false);
+  };
+
+  const handleHelpCenterPress = () => {
+    setShowHelpCenter(true);
+  };
+
+  const handleBackFromHelpCenter = () => {
+    setShowHelpCenter(false);
+  };
+
+  // Show HelpCenterScreen if selected
+  if (showHelpCenter) {
+    return <HelpCenterScreen onBack={handleBackFromHelpCenter} />;
+  }
+
+  // Show AboutUsScreen if selected
+  if (showAboutUs) {
+    return <AboutUsScreen onBack={handleBackFromAboutUs} />;
+  }
+
+  // Show PasswordSecurityScreen if selected
+  if (showPasswordSecurity) {
+    return (
+      <PasswordSecurityScreen onBack={handleBackFromPasswordSecurity} />
+    );
+  }
+
+  // Show ManageProfileScreen if selected
+  if (showManageProfile) {
+    return <ManageProfileScreen onBack={handleBackFromManageProfile} />;
+  }
+
   // Show BookingsListScreen if selected
   if (showBookingsList) {
     return <BookingsListScreen onBack={handleBackFromBookings} />;
@@ -64,7 +134,7 @@ const ProfileScreen = ({ onLogout }) => {
           {user?.business_name || "Vendor"}
         </Text>
         <Text style={styles.email}>
-          {user?.business_email || "email@example.com"}
+          {user?.vendor_email || "email@example.com"}
         </Text>
         <Text style={styles.description}>
           Manage your account settings and preferences
@@ -86,7 +156,10 @@ const ProfileScreen = ({ onLogout }) => {
             />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleManageProfilePress}
+          >
             <Ionicons
               name="person-circle-outline"
               size={20}
@@ -102,7 +175,10 @@ const ProfileScreen = ({ onLogout }) => {
             />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handlePasswordSecurityPress}
+          >
             <Ionicons
               name="lock-closed-outline"
               size={20}
@@ -134,7 +210,10 @@ const ProfileScreen = ({ onLogout }) => {
             />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleLanguagePress}
+          >
             <Ionicons name="language-outline" size={20} color={colors.text} />
             <View style={styles.menuItemTextContainer}>
               <Text style={styles.menuItemText}>Language</Text>
@@ -147,7 +226,10 @@ const ProfileScreen = ({ onLogout }) => {
             />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleAboutUsPress}
+          >
             <Ionicons
               name="document-text-outline"
               size={20}
@@ -180,7 +262,10 @@ const ProfileScreen = ({ onLogout }) => {
             />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleHelpCenterPress}
+          >
             <Ionicons
               name="help-circle-outline"
               size={20}
