@@ -10,8 +10,11 @@ import ProfileScreen from "./screens/ProfileScreen";
 import BottomNavBar from "./components/BottomNavBar";
 import { colors } from "./constants/colors";
 import { isLoggedIn } from "./utils/auth";
+import { AppProvider, useApp } from "./contexts/AppContext";
 
-export default function App() {
+function AppContent() {
+  const { refreshData, clearCache } = useApp();
+
   const [fontsLoaded] = useFonts({
     "Parkinsans-Light": require("./assets/fonts/Parkinsans-Light.ttf"),
     "Parkinsans-Regular": require("./assets/fonts/Parkinsans-Regular.ttf"),
@@ -41,13 +44,17 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = async (user) => {
     // Update authentication state to show HomeScreen
     setIsAuthenticated(true);
     setActiveTab("home");
+    // Refresh context data after login
+    await refreshData();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear cache on logout
+    await clearCache();
     setIsAuthenticated(false);
     setActiveTab("home");
   };
@@ -112,6 +119,14 @@ export default function App() {
         </View>
       </View>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
 

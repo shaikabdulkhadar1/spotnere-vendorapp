@@ -15,19 +15,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
-import { getCurrentUser, logout } from "../utils/auth";
+import { logout } from "../utils/auth";
+import { useApp } from "../contexts/AppContext";
+import BookingsListScreen from "../components/BookingsListScreen";
 
 const ProfileScreen = ({ onLogout }) => {
-  const [user, setUser] = React.useState(null);
-
-  React.useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
-  };
+  const { user } = useApp();
+  const [showBookingsList, setShowBookingsList] = React.useState(false);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -44,6 +38,19 @@ const ProfileScreen = ({ onLogout }) => {
       },
     ]);
   };
+
+  const handleBookingsPress = () => {
+    setShowBookingsList(true);
+  };
+
+  const handleBackFromBookings = () => {
+    setShowBookingsList(false);
+  };
+
+  // Show BookingsListScreen if selected
+  if (showBookingsList) {
+    return <BookingsListScreen onBack={handleBackFromBookings} />;
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -64,13 +71,130 @@ const ProfileScreen = ({ onLogout }) => {
         </Text>
       </View>
 
+      {/* Bookings Section */}
       <View style={styles.section}>
-        <View style={styles.card}>
-          <Ionicons name="person-circle" size={48} color={colors.primary} />
-          <Text style={styles.cardTitle}>Profile</Text>
-          <Text style={styles.cardText}>
-            Manage your vendor profile and settings.
-          </Text>
+        <View style={styles.sectionCard}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleBookingsPress}>
+            <Ionicons name="calendar-outline" size={20} color={colors.text} />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Your Bookings</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="person-circle-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Manage Profile</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Password & Security</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="notifications-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Notifications</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="language-outline" size={20} color={colors.text} />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Language</Text>
+              <Text style={styles.menuItemSubtext}>English</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="document-text-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>About Us</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="color-palette-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Theme</Text>
+              <Text style={styles.menuItemSubtext}>Light</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons
+              name="help-circle-outline"
+              size={20}
+              color={colors.text}
+            />
+            <View style={styles.menuItemTextContainer}>
+              <Text style={styles.menuItemText}>Help Center</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -129,29 +253,50 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
-  card: {
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: fonts.bold,
+    color: colors.text,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  sectionCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: 12,
-    padding: 24,
-    alignItems: "center",
+    padding: 10,
+    overflow: "hidden",
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: colors.cardBackground,
   },
-  cardText: {
-    fontSize: 14,
+  menuItemTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontFamily: fonts.regular,
+    color: colors.text,
+  },
+  menuItemSubtext: {
+    fontSize: 13,
     fontFamily: fonts.regular,
     color: colors.textSecondary,
-    textAlign: "center",
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginLeft: 10,
+    marginRight: 10,
   },
   logoutButton: {
     flexDirection: "row",
