@@ -28,9 +28,11 @@ const HomeScreen = () => {
   const [revenueTimeRange, setRevenueTimeRange] = React.useState("Past month");
   const [revenueData, setRevenueData] = React.useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = React.useState(null);
-  const [showNotificationsModal, setShowNotificationsModal] = React.useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] =
+    React.useState(false);
   const notificationButtonRef = React.useRef(null);
-  const [notificationButtonLayout, setNotificationButtonLayout] = React.useState(null);
+  const [notificationButtonLayout, setNotificationButtonLayout] =
+    React.useState(null);
 
   // Load data when HomeScreen mounts - checks cache first
   React.useEffect(() => {
@@ -56,7 +58,7 @@ const HomeScreen = () => {
         });
         data = Array.from(
           { length: maxDataPoints },
-          () => Math.random() * 2000 + 500
+          () => Math.random() * 2000 + 500,
         );
         totalRevenue = data.reduce((sum, val) => sum + val, 0);
         trendPercentage = ((data[maxDataPoints - 1] - data[0]) / data[0]) * 100;
@@ -71,7 +73,7 @@ const HomeScreen = () => {
         });
         data = Array.from(
           { length: maxDataPoints },
-          () => Math.random() * 2000 + 1000
+          () => Math.random() * 2000 + 1000,
         );
         totalRevenue = data.reduce((sum, val) => sum + val, 0);
         trendPercentage = ((data[maxDataPoints - 1] - data[0]) / data[0]) * 100;
@@ -84,7 +86,7 @@ const HomeScreen = () => {
         });
         data = Array.from(
           { length: maxDataPoints },
-          () => Math.random() * 2000 + 1500
+          () => Math.random() * 2000 + 1500,
         );
         totalRevenue = data.reduce((sum, val) => sum + val, 0);
         trendPercentage = ((data[maxDataPoints - 1] - data[0]) / data[0]) * 100;
@@ -99,7 +101,7 @@ const HomeScreen = () => {
         });
         data = Array.from(
           { length: maxDataPoints },
-          () => Math.random() * 2000 + 2000
+          () => Math.random() * 2000 + 2000,
         );
         totalRevenue = data.reduce((sum, val) => sum + val, 0);
         trendPercentage = ((data[maxDataPoints - 1] - data[0]) / data[0]) * 100;
@@ -159,9 +161,11 @@ const HomeScreen = () => {
         <View
           ref={notificationButtonRef}
           onLayout={(event) => {
-            notificationButtonRef.current?.measureInWindow((x, y, width, height) => {
-              setNotificationButtonLayout({ x, y, width, height });
-            });
+            notificationButtonRef.current?.measureInWindow(
+              (x, y, width, height) => {
+                setNotificationButtonLayout({ x, y, width, height });
+              },
+            );
           }}
         >
           <TouchableOpacity
@@ -193,10 +197,10 @@ const HomeScreen = () => {
                             year: "numeric",
                           })
                         : revenueTimeRange === "Past week"
-                        ? "Last 7 days"
-                        : revenueTimeRange === "Past month"
-                        ? "Last 4 weeks"
-                        : "Last 12 months"}
+                          ? "Last 7 days"
+                          : revenueTimeRange === "Past month"
+                            ? "Last 4 weeks"
+                            : "Last 12 months"}
                     </Text>
                     {revenueData && (
                       <View style={styles.trendContainerTop}>
@@ -298,7 +302,7 @@ const HomeScreen = () => {
                           {range}
                         </Text>
                       </TouchableOpacity>
-                    )
+                    ),
                   )}
                 </View>
               </>

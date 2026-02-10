@@ -27,6 +27,16 @@ import { useApp } from "../contexts/AppContext";
 
 const { width } = Dimensions.get("window");
 
+const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
 const VenduDetailsScreen = () => {
   const { user, placeData, loadPlace } = useApp();
   const [loading, setLoading] = React.useState(false);
@@ -40,6 +50,18 @@ const VenduDetailsScreen = () => {
   const [selectedCountryCode, setSelectedCountryCode] = React.useState("");
   const [selectedStateCode, setSelectedStateCode] = React.useState("");
 
+  // Helper function to format time value (e.g., "09:00" to "9:00 AM")
+  const formatTimeValue = (timeValue) => {
+    if (!timeValue || timeValue === "closed") return "Closed";
+    if (typeof timeValue !== "string") return timeValue;
+    
+    const [hours, minutes] = timeValue.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes || "00"} ${ampm}`;
+  };
+
   React.useEffect(() => {
     if (user?.place_id) {
       // Check cache first, then fetch if needed
@@ -50,6 +72,29 @@ const VenduDetailsScreen = () => {
   // Initialize form data when placeData is available
   React.useEffect(() => {
     if (placeData) {
+      // Format hours for editing (convert JSONB to editable format)
+      let hoursForEdit = "";
+      if (placeData.hours) {
+        if (typeof placeData.hours === "object" && Object.keys(placeData.hours).length > 0) {
+          // Convert JSONB object to readable string format
+          const hoursArray = [];
+          Object.keys(placeData.hours).forEach((day) => {
+            const dayHours = placeData.hours[day];
+            if (dayHours.open === "closed" && dayHours.close === "closed") {
+              hoursArray.push(`${day}: Closed`);
+            } else if (dayHours.open && dayHours.close) {
+              // Format time values to readable format
+              const openTime = formatTimeValue(dayHours.open);
+              const closeTime = formatTimeValue(dayHours.close);
+              hoursArray.push(`${day}: ${openTime} - ${closeTime}`);
+            }
+          });
+          hoursForEdit = hoursArray.join("\n");
+        } else if (typeof placeData.hours === "string") {
+          hoursForEdit = placeData.hours;
+        }
+      }
+
       setEditFormData({
         name: placeData.name || "",
         category: placeData.category || "",
@@ -66,7 +111,7 @@ const VenduDetailsScreen = () => {
         rating: placeData.rating?.toString() || "",
         review_count: placeData.review_count?.toString() || "",
         avg_price: placeData.avg_price?.toString() || "",
-        hours: placeData.hours || "",
+        hours: hoursForEdit,
         amenities: normalizeAmenities(placeData.amenities),
       });
       setLoading(false);
@@ -106,6 +151,67 @@ const VenduDetailsScreen = () => {
       .filter(Boolean);
   };
 
+  // Parse hours string back to JSONB format
+  const parseHoursInput = (value) => {
+    if (!value || !value.trim()) return null;
+    
+    // If it's already an object, return it
+    if (typeof value === "object") {
+      return value;
+    }
+    
+    // Parse string format like "Monday: 9:00 AM - 6:00 PM\nTuesday: Closed"
+    const hoursJsonb = {};
+    const lines = value.split("\n").filter(Boolean);
+    
+    lines.forEach((line) => {
+      const match = line.match(/^(\w+):\s*(.+)$/);
+      if (match) {
+        const day = match[1];
+        const timeStr = match[2].trim();
+        
+        if (timeStr.toLowerCase() === "closed") {
+          hoursJsonb[day] = { open: "closed", close: "closed" };
+        } else {
+          const timeMatch = timeStr.match(/^(.+?)\s*-\s*(.+)$/);
+          if (timeMatch) {
+            const openTime = parseTimeToValue(timeMatch[1].trim());
+            const closeTime = parseTimeToValue(timeMatch[2].trim());
+            if (openTime && closeTime) {
+              hoursJsonb[day] = { open: openTime, close: closeTime };
+            }
+          }
+        }
+      }
+    });
+    
+    return Object.keys(hoursJsonb).length > 0 ? hoursJsonb : null;
+  };
+
+  // Parse time string (e.g., "9:00 AM") to value format (e.g., "09:00")
+  const parseTimeToValue = (timeStr) => {
+    if (!timeStr || timeStr.toLowerCase() === "closed") return "closed";
+    
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (match) {
+      let hour = parseInt(match[1]);
+      const minute = match[2];
+      const ampm = match[3].toUpperCase();
+      
+      if (ampm === "PM" && hour !== 12) hour += 12;
+      if (ampm === "AM" && hour === 12) hour = 0;
+      
+      return `${hour.toString().padStart(2, "0")}:${minute}`;
+    }
+    
+    // If already in HH:MM format, return as is
+    if (/^\d{2}:\d{2}$/.test(timeStr)) {
+      return timeStr;
+    }
+    
+    return null;
+  };
+
   // Banner image from place data
   const bannerImage = placeData?.banner_image_link || null;
 
@@ -116,6 +222,27 @@ const VenduDetailsScreen = () => {
   const handleCancel = () => {
     // Reset form data to original place data from cache
     if (placeData) {
+      // Format hours for editing (convert JSONB to editable format)
+      let hoursForEdit = "";
+      if (placeData.hours) {
+        if (typeof placeData.hours === "object" && Object.keys(placeData.hours).length > 0) {
+          const hoursArray = [];
+          Object.keys(placeData.hours).forEach((day) => {
+            const dayHours = placeData.hours[day];
+            if (dayHours.open === "closed" && dayHours.close === "closed") {
+              hoursArray.push(`${day}: Closed`);
+            } else if (dayHours.open && dayHours.close) {
+              const openTime = formatTimeValue(dayHours.open);
+              const closeTime = formatTimeValue(dayHours.close);
+              hoursArray.push(`${day}: ${openTime} - ${closeTime}`);
+            }
+          });
+          hoursForEdit = hoursArray.join("\n");
+        } else if (typeof placeData.hours === "string") {
+          hoursForEdit = placeData.hours;
+        }
+      }
+
       setEditFormData({
         name: placeData.name || "",
         category: placeData.category || "",
@@ -132,7 +259,7 @@ const VenduDetailsScreen = () => {
         rating: placeData.rating?.toString() || "",
         review_count: placeData.review_count?.toString() || "",
         avg_price: placeData.avg_price?.toString() || "",
-        hours: placeData.hours || "",
+        hours: hoursForEdit,
         amenities: normalizeAmenities(placeData.amenities),
       });
     }
@@ -166,8 +293,8 @@ const VenduDetailsScreen = () => {
         avg_price: editFormData.avg_price
           ? parseFloat(editFormData.avg_price)
           : null,
-        hours: editFormData.hours || null,
-        amenities: parseAmenitiesInput(editFormData.amenities),
+        hours: parseHoursInput(editFormData.hours), // Convert string to JSONB
+        amenities: parseAmenitiesInput(editFormData.amenities), // Already an array
         updated_at: new Date().toISOString(),
         last_updated: new Date().toISOString(),
       };
@@ -241,6 +368,38 @@ const VenduDetailsScreen = () => {
       if (field === "avg_price" && typeof value === "number") {
         return `$${value.toString()}`;
       }
+      // Format hours (JSONB object)
+      if (field === "hours" && value) {
+        if (typeof value === "object" && Object.keys(value).length > 0) {
+          const hoursArray = [];
+          const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+          DAYS_OF_WEEK.forEach((day) => {
+            if (value[day]) {
+              const dayHours = value[day];
+              if (dayHours.open === "closed" && dayHours.close === "closed") {
+                hoursArray.push(`${day}: Closed`);
+              } else if (dayHours.open && dayHours.close) {
+                const openTime = formatTimeValue(dayHours.open);
+                const closeTime = formatTimeValue(dayHours.close);
+                hoursArray.push(`${day}: ${openTime} - ${closeTime}`);
+              }
+            }
+          });
+          return hoursArray.join("\n") || "Add details";
+        } else if (typeof value === "string") {
+          return value || "Add details";
+        }
+        return "Add details";
+      }
+      // Format amenities (array)
+      if (field === "amenities" && value) {
+        if (Array.isArray(value) && value.length > 0) {
+          return value.filter(Boolean).join(", ");
+        } else if (typeof value === "string") {
+          return value;
+        }
+        return "Add details";
+      }
       // Convert numbers to strings
       if (typeof value === "number") {
         return value.toString();
@@ -276,6 +435,135 @@ const VenduDetailsScreen = () => {
           ) : (
             <Text style={styles.detailValue} numberOfLines={multiline ? 3 : 1}>
               {getDisplayValue()}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderHoursField = () => {
+    const hours = placeData?.hours;
+    
+    // Format hours for display
+    const formatHoursForDisplay = () => {
+      if (!hours) return null;
+      
+      if (typeof hours === "object" && Object.keys(hours).length > 0) {
+        return hours;
+      } else if (typeof hours === "string" && hours.trim()) {
+        // Try to parse string format back to object (for backward compatibility)
+        const hoursObj = {};
+        const lines = hours.split("\n").filter(Boolean);
+        lines.forEach((line) => {
+          const match = line.match(/^(\w+):\s*(.+)$/);
+          if (match) {
+            const day = match[1];
+            const timeStr = match[2].trim();
+            if (timeStr.toLowerCase() === "closed") {
+              hoursObj[day] = { open: "closed", close: "closed" };
+            } else {
+              const timeMatch = timeStr.match(/^(.+?)\s*-\s*(.+)$/);
+              if (timeMatch) {
+                const openTime = parseTimeToValue(timeMatch[1].trim());
+                const closeTime = parseTimeToValue(timeMatch[2].trim());
+                if (openTime && closeTime) {
+                  hoursObj[day] = { open: openTime, close: closeTime };
+                }
+              }
+            }
+          }
+        });
+        return Object.keys(hoursObj).length > 0 ? hoursObj : null;
+      }
+      return null;
+    };
+
+    const hoursObj = formatHoursForDisplay();
+
+    return (
+      <View style={styles.detailRow}>
+        <Ionicons name="time-outline" size={20} color={colors.primary} />
+        <View style={styles.detailContent}>
+          <Text style={styles.detailLabel}>Working Hours</Text>
+          {isEditing ? (
+            <TextInput
+              style={[styles.detailInput, styles.detailInputMultiline]}
+              value={editFormData.hours || ""}
+              onChangeText={(value) => handleFieldChange("hours", value)}
+              placeholder="Monday: 9:00 AM - 6:00 PM&#10;Tuesday: Closed"
+              placeholderTextColor={colors.textSecondary}
+              multiline={true}
+              numberOfLines={7}
+              textAlignVertical="top"
+            />
+          ) : hoursObj && Object.keys(hoursObj).length > 0 ? (
+            <View style={styles.hoursTable}>
+              {DAYS_OF_WEEK.map((day) => {
+                const dayHours = hoursObj[day];
+                if (!dayHours) return null;
+                
+                const isClosed = dayHours.open === "closed" && dayHours.close === "closed";
+                const openTime = isClosed ? "Closed" : formatTimeValue(dayHours.open);
+                const closeTime = isClosed ? "" : formatTimeValue(dayHours.close);
+                
+                return (
+                  <View key={day} style={styles.hoursRow}>
+                    <Text style={styles.hoursDay}>{day.substring(0, 3)}</Text>
+                    <Text
+                      style={[
+                        styles.hoursTime,
+                        isClosed && styles.hoursTimeClosed,
+                      ]}
+                    >
+                      {isClosed ? "Closed" : `${openTime} - ${closeTime}`}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={[styles.detailValue, styles.detailValuePlaceholder]}>
+              Add details
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderAmenitiesField = () => {
+    const amenities = placeData?.amenities;
+    const amenitiesArray = Array.isArray(amenities)
+      ? amenities.filter(Boolean)
+      : amenities && typeof amenities === "string"
+      ? amenities.split(",").map((a) => a.trim()).filter(Boolean)
+      : [];
+
+    return (
+      <View style={styles.detailRow}>
+        <Ionicons name="star-outline" size={20} color={colors.primary} />
+        <View style={styles.detailContent}>
+          <Text style={styles.detailLabel}>Amenities</Text>
+          {isEditing ? (
+            <TextInput
+              style={styles.detailInput}
+              value={editFormData.amenities || ""}
+              onChangeText={(value) => handleFieldChange("amenities", value)}
+              placeholder="WiFi, Parking, Air Conditioning (comma separated)"
+              placeholderTextColor={colors.textSecondary}
+            />
+          ) : amenitiesArray.length > 0 ? (
+            <View style={styles.amenitiesContainer}>
+              {amenitiesArray.map((amenity, index) => (
+                <View key={index} style={styles.amenityBadge}>
+                  <Text style={styles.amenityBadgeText}>{amenity}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.detailValue, styles.detailValuePlaceholder]}>
+              Add details
             </Text>
           )}
         </View>
@@ -618,15 +906,11 @@ const VenduDetailsScreen = () => {
                 "cash",
                 "decimal-pad",
               )}
-              {renderEditableField("Hours", "hours", "time", "default", true)}
-              {/* Amenities */}
-              {renderEditableField(
-                "Amenities",
-                "amenities",
-                "checkmark-circle",
-                "default",
-                true,
-              )}
+              {/* Working Hours - Display as formatted table */}
+              {renderHoursField()}
+              
+              {/* Amenities - Display as badges */}
+              {renderAmenitiesField()}
             </>
           ) : (
             <View style={styles.noDataContainer}>
@@ -895,6 +1179,55 @@ const styles = StyleSheet.create({
   },
   detailDropdownPlaceholder: {
     color: colors.textSecondary,
+  },
+  detailValuePlaceholder: {
+    color: colors.textSecondary,
+  },
+  hoursTable: {
+    marginTop: 8,
+  },
+  hoursRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border + "30",
+  },
+  hoursDay: {
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
+    color: colors.text,
+    minWidth: 50,
+  },
+  hoursTime: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.text,
+    flex: 1,
+    textAlign: "right",
+  },
+  hoursTimeClosed: {
+    color: colors.error,
+    fontFamily: fonts.semiBold,
+  },
+  amenitiesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  amenityBadge: {
+    backgroundColor: colors.primary + "15",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  amenityBadgeText: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.primary,
   },
   detailDropdownDisabled: {
     opacity: 0.6,

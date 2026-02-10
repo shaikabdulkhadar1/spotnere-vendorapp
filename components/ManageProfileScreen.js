@@ -35,6 +35,12 @@ const ManageProfileScreen = ({ onBack }) => {
   const [showSubCategoryModal, setShowSubCategoryModal] = React.useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = React.useState("");
   const [selectedStateCode, setSelectedStateCode] = React.useState("");
+  // Vendor address modal states
+  const [showVendorCountryModal, setShowVendorCountryModal] = React.useState(false);
+  const [showVendorStateModal, setShowVendorStateModal] = React.useState(false);
+  const [showVendorCityModal, setShowVendorCityModal] = React.useState(false);
+  const [selectedVendorCountryCode, setSelectedVendorCountryCode] = React.useState("");
+  const [selectedVendorStateCode, setSelectedVendorStateCode] = React.useState("");
 
   const businessCategories = [
     "Sports",
@@ -77,14 +83,14 @@ const ManageProfileScreen = ({ onBack }) => {
     setEditFormData({
       business_name: vendorData.business_name || "",
       vendor_full_name: vendorData.vendor_full_name || "",
-      business_phone_number: vendorData.business_phone_number || "",
       vendor_phone_number: vendorData.vendor_phone_number || "",
       vendor_email: vendorData.vendor_email || "",
-      business_address: vendorData.business_address || "",
-      city: vendorData.city || "",
-      state: vendorData.state || "",
-      country: vendorData.country || "",
-      postal_code: vendorData.postal_code || "",
+      // Vendor address fields
+      vendor_address: vendorData.vendor_address || "",
+      vendor_city: vendorData.vendor_city || "",
+      vendor_state: vendorData.vendor_state || "",
+      vendor_country: vendorData.vendor_country || "",
+      vendor_postal_code: vendorData.vendor_postal_code || "",
     });
   }, []);
 
@@ -95,10 +101,11 @@ const ManageProfileScreen = ({ onBack }) => {
 
     try {
       // Fetch vendor details ONLY from vendors table
+      // NOTE: business_phone_number is stored in places table, not vendors table
       const { data: vendorData, error } = await supabase
         .from("vendors")
         .select(
-          "id, business_name, vendor_full_name, business_phone_number, vendor_phone_number, vendor_email, business_address, city, state, country, postal_code"
+          "id, business_name, vendor_full_name, vendor_phone_number, vendor_email, vendor_address, vendor_city, vendor_state, vendor_country, vendor_postal_code"
         )
         .eq("id", user.id)
         .single();
@@ -133,6 +140,7 @@ const ManageProfileScreen = ({ onBack }) => {
 
   React.useEffect(() => {
     if (!isEditing) return;
+    // Business address country/state codes
     const countryCode =
       Country.getAllCountries().find(
         (item) => item.name === editFormData.country
@@ -140,14 +148,29 @@ const ManageProfileScreen = ({ onBack }) => {
     setSelectedCountryCode(countryCode);
     if (!countryCode) {
       setSelectedStateCode("");
-      return;
+    } else {
+      const stateCode =
+        State.getStatesOfCountry(countryCode).find(
+          (item) => item.name === editFormData.state
+        )?.isoCode || "";
+      setSelectedStateCode(stateCode);
     }
-    const stateCode =
-      State.getStatesOfCountry(countryCode).find(
-        (item) => item.name === editFormData.state
+    // Vendor address country/state codes
+    const vendorCountryCode =
+      Country.getAllCountries().find(
+        (item) => item.name === editFormData.vendor_country
       )?.isoCode || "";
-    setSelectedStateCode(stateCode);
-  }, [editFormData.country, editFormData.state, isEditing]);
+    setSelectedVendorCountryCode(vendorCountryCode);
+    if (!vendorCountryCode) {
+      setSelectedVendorStateCode("");
+    } else {
+      const vendorStateCode =
+        State.getStatesOfCountry(vendorCountryCode).find(
+          (item) => item.name === editFormData.vendor_state
+        )?.isoCode || "";
+      setSelectedVendorStateCode(vendorStateCode);
+    }
+  }, [editFormData.country, editFormData.state, editFormData.vendor_country, editFormData.vendor_state, isEditing]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -170,14 +193,14 @@ const ManageProfileScreen = ({ onBack }) => {
       const updateData = {
         business_name: editFormData.business_name || null,
         vendor_full_name: editFormData.vendor_full_name || null,
-        business_phone_number: editFormData.business_phone_number || null,
         vendor_phone_number: editFormData.vendor_phone_number || null,
         vendor_email: editFormData.vendor_email || null,
-        business_address: editFormData.business_address || null,
-        city: editFormData.city || null,
-        state: editFormData.state || null,
-        country: editFormData.country || null,
-        postal_code: editFormData.postal_code || null,
+        // Vendor address fields
+        vendor_address: editFormData.vendor_address || null,
+        vendor_city: editFormData.vendor_city || null,
+        vendor_state: editFormData.vendor_state || null,
+        vendor_country: editFormData.vendor_country || null,
+        vendor_postal_code: editFormData.vendor_postal_code || null,
       };
 
       const { error } = await supabase
@@ -261,23 +284,23 @@ const ManageProfileScreen = ({ onBack }) => {
     );
   };
 
-  const renderLocationDropdown = (label, fieldKey, type) => {
+  const renderVendorLocationDropdown = (label, fieldKey, type) => {
     const value = editFormData[fieldKey] || "";
     const displayValue = value || "Add details";
     const isModalVisible =
       type === "country"
-        ? showCountryModal
+        ? showVendorCountryModal
         : type === "state"
-        ? showStateModal
-        : showCityModal;
+        ? showVendorStateModal
+        : showVendorCityModal;
 
     const setModalVisible = (visible) => {
       if (type === "country") {
-        setShowCountryModal(visible);
+        setShowVendorCountryModal(visible);
       } else if (type === "state") {
-        setShowStateModal(visible);
+        setShowVendorStateModal(visible);
       } else {
-        setShowCityModal(visible);
+        setShowVendorCityModal(visible);
       }
     };
 
@@ -307,18 +330,18 @@ const ManageProfileScreen = ({ onBack }) => {
         code: c.isoCode,
       }));
     } else if (type === "state") {
-      if (selectedCountryCode) {
-        options = State.getStatesOfCountry(selectedCountryCode).map((s) => ({
+      if (selectedVendorCountryCode) {
+        options = State.getStatesOfCountry(selectedVendorCountryCode).map((s) => ({
           label: s.name,
           value: s.name,
           code: s.isoCode,
         }));
       }
     } else if (type === "city") {
-      if (selectedStateCode && selectedCountryCode) {
+      if (selectedVendorStateCode && selectedVendorCountryCode) {
         options = City.getCitiesOfState(
-          selectedCountryCode,
-          selectedStateCode
+          selectedVendorCountryCode,
+          selectedVendorStateCode
         ).map((c) => ({
           label: c.name,
           value: c.name,
@@ -376,26 +399,27 @@ const ManageProfileScreen = ({ onBack }) => {
                   <TouchableOpacity
                     style={styles.modalItem}
                     onPress={() => {
-                      setEditFormData({
-                        ...editFormData,
-                        [fieldKey]: item.value || item.label,
-                      });
                       if (type === "country" && item.code) {
-                        setSelectedCountryCode(item.code);
+                        setSelectedVendorCountryCode(item.code);
                         // Reset state and city when country changes
                         setEditFormData({
                           ...editFormData,
                           [fieldKey]: item.value || item.label,
-                          state: "",
-                          city: "",
+                          vendor_state: "",
+                          vendor_city: "",
                         });
                       } else if (type === "state" && item.code) {
-                        setSelectedStateCode(item.code);
+                        setSelectedVendorStateCode(item.code);
                         // Reset city when state changes
                         setEditFormData({
                           ...editFormData,
                           [fieldKey]: item.value || item.label,
-                          city: "",
+                          vendor_city: "",
+                        });
+                      } else {
+                        setEditFormData({
+                          ...editFormData,
+                          [fieldKey]: item.value || item.label,
                         });
                       }
                       setModalVisible(false);
@@ -600,13 +624,6 @@ const ManageProfileScreen = ({ onBack }) => {
               "Add email",
               "email-address"
             )}
-            <View style={styles.divider} />
-            {renderEditableField(
-              "Business Phone",
-              "business_phone_number",
-              "Add phone number",
-              "phone-pad"
-            )}
           </View>
         </View>
 
@@ -625,23 +642,23 @@ const ManageProfileScreen = ({ onBack }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Address Information</Text>
+          <Text style={styles.sectionTitle}>Vendor Address</Text>
           <View style={styles.sectionCard}>
-            {renderLocationDropdown("Country", "country", "country")}
+            {renderVendorLocationDropdown("Country", "vendor_country", "country")}
             <View style={styles.divider} />
-            {renderLocationDropdown("State", "state", "state")}
+            {renderVendorLocationDropdown("State", "vendor_state", "state")}
             <View style={styles.divider} />
-            {renderLocationDropdown("City", "city", "city")}
+            {renderVendorLocationDropdown("City", "vendor_city", "city")}
             <View style={styles.divider} />
             {renderEditableField(
               "Postal Code",
-              "postal_code",
+              "vendor_postal_code",
               "Add postal code"
             )}
             <View style={styles.divider} />
             {renderEditableField(
-              "Business Address",
-              "business_address",
+              "Address",
+              "vendor_address",
               "Add address"
             )}
           </View>

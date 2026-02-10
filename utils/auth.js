@@ -73,14 +73,15 @@ export const verifyPassword = async (password, hash) => {
  */
 const createPlace = async (formData) => {
   try {
-    // Prepare place data with address details and category information
+    // Prepare place data with business address details and category information
+    // This is the business/place location address
     const placeData = {
       name: formData.businessName,
-      address: formData.address,
-      country: formData.country,
-      city: formData.city,
-      state: formData.state,
-      postal_code: formData.postalCode,
+      address: formData.address, // Business address
+      country: formData.country, // Business country
+      city: formData.city, // Business city
+      state: formData.state, // Business state
+      postal_code: formData.postalCode, // Business postal code
       phone_number: formData.businessPhoneNumber,
       category: formData.businessCategory,
       sub_category: formData.businessSubCategory || null,
@@ -136,20 +137,21 @@ export const registerUser = async (formData) => {
 
     // Step 3: Prepare vendor data matching exact schema
     // SECURITY: Only password_hash is stored in database, never the plain password
+    // NOTE: business_category and business_sub_category are stored in the places table, not vendors table
+    // NOTE: Business address is stored in places table, vendor address is stored in vendors table
+    // NOTE: business_phone_number is stored in places table (as phone_number), not in vendors table
     const vendorData = {
       business_name: formData.businessName,
-      business_category: formData.businessCategory,
-      business_sub_category: formData.businessSubCategory || null,
       vendor_full_name: formData.vendorFullName,
-      business_phone_number: formData.businessPhoneNumber,
       vendor_phone_number: formData.vendorPhoneNumber,
       vendor_email: formData.email.toLowerCase().trim(),
       password_hash: passwordHash, // HASHED password only - never plain text
-      business_address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      country: formData.country,
-      postal_code: formData.postalCode,
+      // Vendor address (personal address)
+      vendor_address: formData.vendorAddress,
+      vendor_city: formData.vendorCity,
+      vendor_state: formData.vendorState,
+      vendor_country: formData.vendorCountry,
+      vendor_postal_code: formData.vendorPostalCode,
       place_id: placeId, // Add the place UUID to vendors table
     };
 
@@ -158,7 +160,7 @@ export const registerUser = async (formData) => {
       .from("vendors")
       .insert([vendorData])
       .select(
-        "id, business_name, vendor_full_name, business_phone_number, vendor_phone_number, vendor_email, password_hash, business_address, city, state, country, postal_code, place_id, created_at, updated_at"
+        "id, business_name, vendor_full_name, vendor_phone_number, vendor_email, password_hash, vendor_address, vendor_city, vendor_state, vendor_country, vendor_postal_code, place_id, created_at, updated_at"
       )
       .single();
 
@@ -200,10 +202,11 @@ export const registerUser = async (formData) => {
 export const loginUser = async (email, password) => {
   try {
     // Fetch vendor by vendor_email (excluding business_category and business_sub_category)
+    // NOTE: business_phone_number is stored in places table, not vendors table
     const { data, error } = await supabase
       .from("vendors")
       .select(
-        "id, business_name, vendor_full_name, business_phone_number, vendor_phone_number, vendor_email, password_hash, business_address, city, state, country, postal_code, place_id, created_at, updated_at"
+        "id, business_name, vendor_full_name, vendor_phone_number, vendor_email, password_hash, vendor_address, vendor_city, vendor_state, vendor_country, vendor_postal_code, place_id, created_at, updated_at"
       )
       .eq("vendor_email", email.toLowerCase().trim())
       .single();

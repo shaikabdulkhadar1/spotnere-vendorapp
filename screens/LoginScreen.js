@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -10,15 +10,12 @@ import {
   Platform,
   Dimensions,
   Alert,
-  Modal,
-  FlatList,
-  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
-import { Country, State, City } from "country-state-city";
-import { registerUser, loginUser } from "../utils/auth";
+import { loginUser } from "../utils/auth";
+import RegistrationPage from "../components/RegistrationPage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -26,135 +23,12 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
   const [mode, setMode] = useState("signIn"); // "signIn" or "signUp"
 
   const [formData, setFormData] = useState({
-    businessName: "",
-    businessCategory: "",
-    businessSubCategory: "",
-    vendorFullName: "",
-    businessPhoneNumber: "",
-    vendorPhoneNumber: "",
     email: "",
     password: "",
-    confirmPassword: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    postalCode: "",
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Dropdown modals
-  const [showCountryModal, setShowCountryModal] = useState(false);
-  const [showStateModal, setShowStateModal] = useState(false);
-  const [showCityModal, setShowCityModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showSubCategoryModal, setShowSubCategoryModal] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState("");
-  const [selectedStateCode, setSelectedStateCode] = useState("");
-
-  // Business category options
-  const businessCategories = [
-    { value: "Sports", label: "Sports" },
-    { value: "Adventure", label: "Adventure" },
-    { value: "Parks", label: "Parks" },
-    { value: "Staycation", label: "Staycation" },
-    { value: "Tickets to Event", label: "Tickets to Event" },
-    { value: "Exclusive", label: "Exclusive" },
-  ];
-
-  // Business sub-categories mapping
-  const getBusinessSubCategories = (category) => {
-    const subCategoriesMap = {
-      Sports: [
-        "Cricket",
-        "Racquet games",
-        "Football",
-        "Basket ball",
-        "Volly ball",
-        "Golf",
-        "Bowling",
-        "Snooker",
-        "Aiming Games",
-        "VR Games",
-        "Paintball",
-        "Go Carting",
-        "Trampolin",
-        "Cycling",
-      ],
-      Adventure: [
-        "Water Amusement",
-        "Jungle Safari",
-        "Para Gliding",
-        "Para Motoring",
-        "Trekking",
-        "Ziplining",
-        "Horse Riding",
-      ],
-      Parks: ["Water Amusement", "Family Park", "Zoological park", "Kids park"],
-      Staycation: ["Farm House", "Resorts", "5S Villa's"],
-      "Tickets to Event": [
-        "Football Match",
-        "Cricket Match",
-        "Hockey Match",
-        "Snooker Match",
-        "Tennis Match",
-        "Kabaddi Match",
-        "IPL Tickets",
-      ],
-      Exclusive: [
-        "Scuba Diving",
-        "Sky Diving",
-        "Hot Air Ballon",
-        "Disney Land",
-        "Ferrari World",
-        "Mount Everest Climbing",
-      ],
-    };
-
-    return subCategoriesMap[category] || [];
-  };
-
-  // Get sub-categories for selected category
-  const businessSubCategories = formData.businessCategory
-    ? getBusinessSubCategories(formData.businessCategory).map((subCat) => ({
-        value: subCat,
-        label: subCat,
-      }))
-    : [];
-
-  // Get countries, states, and cities from library
-  const countries = Country.getAllCountries();
-  const states = selectedCountryCode
-    ? State.getStatesOfCountry(selectedCountryCode)
-    : [];
-  const cities =
-    selectedCountryCode && selectedStateCode
-      ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
-      : [];
-
-  // Reset state and city when country changes
-  useEffect(() => {
-    if (formData.country) {
-      setFormData((prev) => ({ ...prev, state: "", city: "" }));
-      setSelectedStateCode("");
-    }
-  }, [formData.country]);
-
-  // Reset city when state changes
-  useEffect(() => {
-    if (formData.state) {
-      setFormData((prev) => ({ ...prev, city: "" }));
-    }
-  }, [formData.state]);
-
-  // Reset sub-category when category changes
-  useEffect(() => {
-    if (formData.businessCategory) {
-      setFormData((prev) => ({ ...prev, businessSubCategory: "" }));
-    }
-  }, [formData.businessCategory]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -164,40 +38,10 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     }
   };
 
-  const handleDropdownSelect = (field, value, displayValue) => {
-    handleInputChange(field, value);
-    if (field === "country") {
-      setShowCountryModal(false);
-    } else if (field === "state") {
-      setShowStateModal(false);
-    } else if (field === "city") {
-      setShowCityModal(false);
-    } else if (field === "businessCategory") {
-      setShowCategoryModal(false);
-    } else if (field === "businessSubCategory") {
-      setShowSubCategoryModal(false);
-    }
-  };
-
-  const handleCountrySelect = (country) => {
-    setSelectedCountryCode(country.isoCode);
-    setSelectedStateCode("");
-    handleDropdownSelect("country", country.name, country.name);
-  };
-
-  const handleStateSelect = (state) => {
-    setSelectedStateCode(state.isoCode);
-    handleDropdownSelect("state", state.name, state.name);
-  };
-
-  const handleCitySelect = (city) => {
-    handleDropdownSelect("city", city.name, city.name);
-  };
 
   const validateForm = () => {
     const newErrors = {};
 
-    // Common validations for both modes
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -210,59 +54,6 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
       newErrors.password = "Password must be at least 6 characters";
     }
 
-    // Sign-up specific validations
-    if (mode === "signUp") {
-      if (!formData.businessName.trim()) {
-        newErrors.businessName = "Business name is required";
-      }
-
-      if (!formData.businessCategory.trim()) {
-        newErrors.businessCategory = "Business category is required";
-      }
-
-      if (!formData.vendorFullName.trim()) {
-        newErrors.vendorFullName = "Vendor full name is required";
-      }
-
-      if (!formData.businessPhoneNumber.trim()) {
-        newErrors.businessPhoneNumber = "Business phone number is required";
-      } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.businessPhoneNumber)) {
-        newErrors.businessPhoneNumber = "Please enter a valid phone number";
-      }
-
-      if (!formData.vendorPhoneNumber.trim()) {
-        newErrors.vendorPhoneNumber = "Vendor phone number is required";
-      } else if (!/^[\d\s\-\+\(\)]+$/.test(formData.vendorPhoneNumber)) {
-        newErrors.vendorPhoneNumber = "Please enter a valid phone number";
-      }
-
-      if (!formData.confirmPassword.trim()) {
-        newErrors.confirmPassword = "Please confirm your password";
-      } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match";
-      }
-
-      if (!formData.address.trim()) {
-        newErrors.address = "Address is required";
-      }
-
-      if (!formData.city.trim()) {
-        newErrors.city = "City is required";
-      }
-
-      if (!formData.state.trim()) {
-        newErrors.state = "State is required";
-      }
-
-      if (!formData.country.trim()) {
-        newErrors.country = "Country is required";
-      }
-
-      if (!formData.postalCode.trim()) {
-        newErrors.postalCode = "Postal code is required";
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -271,7 +62,7 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     if (!validateForm()) {
       Alert.alert(
         "Validation Error",
-        "Please fill in all required fields correctly.",
+        "Please fill in all required fields correctly."
       );
       return;
     }
@@ -279,86 +70,33 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     setIsSubmitting(true);
 
     try {
-      if (mode === "signIn") {
-        // Sign in logic
-        const result = await loginUser(formData.email, formData.password);
+      const result = await loginUser(formData.email, formData.password);
 
-        if (!result.success) {
-          Alert.alert(
-            "Sign In Failed",
-            result.error || "Failed to sign in. Please try again.",
-          );
-          return;
-        }
+      if (!result.success) {
+        Alert.alert(
+          "Sign In Failed",
+          result.error || "Failed to sign in. Please try again."
+        );
+        return;
+      }
 
-        // Success - call callback if provided
-        if (onLoginSuccess && result.user) {
-          onLoginSuccess(result.user);
-        } else {
-          Alert.alert("Success", "Signed in successfully!", [{ text: "OK" }]);
-        }
+      // Success - call callback if provided
+      if (onLoginSuccess && result.user) {
+        onLoginSuccess(result.user);
       } else {
-        // Sign up logic
-        const result = await registerUser(formData);
-
-        if (!result.success) {
-          Alert.alert(
-            "Registration Failed",
-            result.error || "Failed to create account. Please try again.",
-          );
-          return;
-        }
-
-        // Success - call callback if provided
-        if (onLoginSuccess && result.user) {
-          onLoginSuccess(result.user);
-        } else {
-          Alert.alert(
-            "Success",
-            "Account created successfully! Your account is pending approval.",
-            [{ text: "OK" }],
-          );
-        }
+        Alert.alert("Success", "Signed in successfully!", [{ text: "OK" }]);
       }
     } catch (error) {
       Alert.alert(
         "Error",
-        error.message || "Something went wrong. Please try again.",
+        error.message || "Something went wrong. Please try again."
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      businessName: "",
-      businessCategory: "",
-      businessSubCategory: "",
-      vendorFullName: "",
-      businessPhoneNumber: "",
-      vendorPhoneNumber: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      postalCode: "",
-    });
-    setSelectedCountryCode("");
-    setSelectedStateCode("");
-    setErrors({});
-  };
-
-  const handleModeSwitch = (newMode) => {
-    setMode(newMode);
-    resetForm();
-  };
-
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const renderInputField = (
     field,
@@ -372,15 +110,9 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
   ) => {
     const hasError = errors[field];
     const value = formData[field];
-    const isPasswordField =
-      isPassword || field === "password" || field === "confirmPassword";
+    const isPasswordField = isPassword || field === "password";
     const showToggle = showPasswordToggle || isPasswordField;
-    const isVisible =
-      field === "password"
-        ? showPassword
-        : field === "confirmPassword"
-          ? showConfirmPassword
-          : true;
+    const isVisible = field === "password" ? showPassword : true;
 
     return (
       <View style={styles.inputContainer}>
@@ -416,8 +148,6 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
               onPress={() => {
                 if (field === "password") {
                   setShowPassword(!showPassword);
-                } else if (field === "confirmPassword") {
-                  setShowConfirmPassword(!showConfirmPassword);
                 }
               }}
               style={styles.eyeIcon}
@@ -435,144 +165,20 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
     );
   };
 
-  const renderDropdownField = (
-    field,
-    label,
-    placeholder,
-    icon,
-    options,
-    showModal,
-    setShowModal,
-    getValue,
-    getDisplayValue,
-    disabled = false,
-    onSelect = null,
-  ) => {
-    const hasError = errors[field];
-    const selectedValue = formData[field];
-    // Ensure options is always an array
-    const safeOptions = Array.isArray(options) ? options : [];
-    const selectedOption = safeOptions.find(
-      (item) => getValue(item) === selectedValue,
-    );
-    const displayText = selectedOption
-      ? getDisplayValue(selectedOption)
-      : placeholder;
-
+  // Show RegistrationPage if in signUp mode
+  if (mode === "signUp") {
     return (
-      <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <TouchableOpacity
-          style={[
-            styles.inputWrapper,
-            styles.dropdownWrapper,
-            hasError && styles.inputWrapperError,
-            selectedValue && !hasError && styles.inputWrapperFilled,
-            disabled && styles.dropdownDisabled,
-          ]}
-          onPress={() => !disabled && setShowModal(true)}
-          disabled={disabled}
-        >
-          {icon && (
-            <Ionicons
-              name={icon}
-              size={20}
-              color={hasError ? colors.error : colors.textSecondary}
-              style={styles.inputIcon}
-            />
-          )}
-          <Text
-            style={[
-              styles.dropdownText,
-              !selectedValue && styles.dropdownPlaceholder,
-            ]}
-          >
-            {displayText}
-          </Text>
-          <Ionicons
-            name="chevron-down"
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-        {hasError && <Text style={styles.errorText}>{errors[field]}</Text>}
-
-        {/* Dropdown Modal */}
-        <Modal
-          visible={showModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select {label}</Text>
-                <TouchableOpacity
-                  onPress={() => setShowModal(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-              {safeOptions.length === 0 ? (
-                <View style={styles.modalEmpty}>
-                  <Text style={styles.modalEmptyText}>
-                    {disabled
-                      ? "Please select a country first"
-                      : "No options available"}
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={safeOptions}
-                  keyExtractor={(item, index) =>
-                    getValue(item) || `option-${index}`
-                  }
-                  renderItem={({ item }) => {
-                    const value = getValue(item);
-                    const display = getDisplayValue(item);
-                    const isSelected = selectedValue === value;
-
-                    return (
-                      <TouchableOpacity
-                        style={[
-                          styles.modalItem,
-                          isSelected && styles.modalItemSelected,
-                        ]}
-                        onPress={() =>
-                          onSelect
-                            ? onSelect(item)
-                            : handleDropdownSelect(field, value, display)
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.modalItemText,
-                            isSelected && styles.modalItemTextSelected,
-                          ]}
-                        >
-                          {display}
-                        </Text>
-                        {isSelected && (
-                          <Ionicons
-                            name="checkmark"
-                            size={20}
-                            color={colors.primary}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }}
-                  style={styles.modalList}
-                />
-              )}
-            </View>
-          </View>
-        </Modal>
-      </View>
+      <RegistrationPage
+        onRegistrationSuccess={(user) => {
+          if (onLoginSuccess) {
+            onLoginSuccess(user);
+          }
+        }}
+        onBack={onBack}
+        onSwitchToLogin={() => setMode("signIn")}
+      />
     );
-  };
+  }
 
   return (
     <KeyboardAvoidingView
@@ -589,211 +195,36 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
         <View style={styles.header}>
           <Text style={styles.title}>Spotnere Vendor</Text>
           <Text style={styles.subtitle}>
-            {mode === "signIn"
-              ? "Sign in to manage your business"
-              : "Please fill in your details to create and manage your business"}
+            Sign in to manage your business
           </Text>
         </View>
 
         {/* Form Fields */}
         <View style={styles.formContainer}>
           {/* Sign In Form */}
-          {mode === "signIn" ? (
-            <>
-              {/* Email */}
-              {renderInputField(
-                "email",
-                "Business Email",
-                "Enter your business email address",
-                "email-address",
-                "none",
-                "mail-outline",
-              )}
+          <>
+            {/* Email */}
+            {renderInputField(
+              "email",
+              "Business Email",
+              "Enter your business email address",
+              "email-address",
+              "none",
+              "mail-outline",
+            )}
 
-              {/* Password */}
-              {renderInputField(
-                "password",
-                "Password",
-                "Enter your password",
-                "default",
-                "none",
-                "lock-closed-outline",
-                true,
-                true,
-              )}
-            </>
-          ) : (
-            <>
-              {/* Sign Up Form */}
-              {/* Business Name */}
-              {renderInputField(
-                "businessName",
-                "Business Name",
-                "Enter your business name",
-                "default",
-                "words",
-                "business-outline",
-              )}
-
-              {/* Business Category Dropdown */}
-              {renderDropdownField(
-                "businessCategory",
-                "Business Category",
-                "Select your business category",
-                "grid-outline",
-                businessCategories,
-                showCategoryModal,
-                setShowCategoryModal,
-                (item) => item.value,
-                (item) => item.label,
-              )}
-
-              {/* Business Sub Category Dropdown */}
-              {renderDropdownField(
-                "businessSubCategory",
-                "Business Sub Category (Optional)",
-                formData.businessCategory
-                  ? "Select your business sub category"
-                  : "Select category first",
-                "list-outline",
-                businessSubCategories,
-                showSubCategoryModal,
-                setShowSubCategoryModal,
-                (item) => item.value,
-                (item) => item.label,
-                !formData.businessCategory,
-              )}
-
-              {/* Vendor Full Name */}
-              {renderInputField(
-                "vendorFullName",
-                "Vendor Full Name",
-                "Enter your full name",
-                "default",
-                "words",
-                "person-outline",
-              )}
-
-              {/* Business Phone Number */}
-              {renderInputField(
-                "businessPhoneNumber",
-                "Business Phone Number",
-                "Enter your business phone number",
-                "phone-pad",
-                "none",
-                "call-outline",
-              )}
-
-              {/* Vendor Phone Number */}
-              {renderInputField(
-                "vendorPhoneNumber",
-                "Vendor Phone Number",
-                "Enter your vendor phone number",
-                "phone-pad",
-                "none",
-                "call-outline",
-              )}
-
-              {/* Email */}
-              {renderInputField(
-                "email",
-                "Business Email",
-                "Enter your business email address",
-                "email-address",
-                "none",
-                "mail-outline",
-              )}
-
-              {/* Password */}
-              {renderInputField(
-                "password",
-                "Password",
-                "Enter your password",
-                "default",
-                "none",
-                "lock-closed-outline",
-                true,
-                true,
-              )}
-
-              {/* Confirm Password */}
-              {renderInputField(
-                "confirmPassword",
-                "Confirm Password",
-                "Confirm your password",
-                "default",
-                "none",
-                "lock-closed-outline",
-                true,
-                true,
-              )}
-
-              {/* Address */}
-              {renderInputField(
-                "address",
-                "Address",
-                "Enter your address",
-                "default",
-                "words",
-                "home-outline",
-              )}
-
-              {/* Country Dropdown */}
-              {renderDropdownField(
-                "country",
-                "Country",
-                "Select your country",
-                "globe-outline",
-                countries,
-                showCountryModal,
-                setShowCountryModal,
-                (item) => item.name,
-                (item) => item.name,
-                false,
-                handleCountrySelect,
-              )}
-
-              {/* State Dropdown */}
-              {renderDropdownField(
-                "state",
-                "State",
-                formData.country ? "Select your state" : "Select country first",
-                "map-outline",
-                states,
-                showStateModal,
-                setShowStateModal,
-                (item) => item.name,
-                (item) => item.name,
-                !formData.country,
-                handleStateSelect,
-              )}
-
-              {/* City Dropdown */}
-              {renderDropdownField(
-                "city",
-                "City",
-                formData.state ? "Select your city" : "Select state first",
-                "location-outline",
-                cities,
-                showCityModal,
-                setShowCityModal,
-                (item) => item.name,
-                (item) => item.name,
-                !formData.state,
-                handleCitySelect,
-              )}
-
-              {/* Postal Code */}
-              {renderInputField(
-                "postalCode",
-                "Postal Code",
-                "Enter your postal code",
-                "default",
-                "characters",
-                "mail-outline",
-              )}
-            </>
-          )}
+            {/* Password */}
+            {renderInputField(
+              "password",
+              "Password",
+              "Enter your password",
+              "default",
+              "none",
+              "lock-closed-outline",
+              true,
+              true,
+            )}
+          </>
         </View>
 
         {/* Submit Button */}
@@ -806,43 +237,19 @@ const LoginScreen = ({ onLoginSuccess, onBack }) => {
           disabled={isSubmitting}
           activeOpacity={0.8}
         >
-          {isSubmitting ? (
-            <Text style={styles.submitButtonText}>
-              {mode === "signIn" ? "Signing In..." : "Creating Account..."}
-            </Text>
-          ) : (
-            <Text style={styles.submitButtonText}>
-              {mode === "signIn" ? "Sign In" : "Create Account"}
-            </Text>
-          )}
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? "Signing In..." : "Sign In"}
+          </Text>
         </TouchableOpacity>
 
         {/* Footer Text */}
-        {mode === "signUp" && (
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By creating an account, you agree to our{" "}
-              <Text style={styles.footerLink}>Terms of Service</Text> and{" "}
-              <Text style={styles.footerLink}>Privacy Policy</Text>
-            </Text>
-          </View>
-        )}
         <View style={styles.footer}>
-          {mode === "signIn" ? (
-            <TouchableOpacity onPress={() => handleModeSwitch("signUp")}>
-              <Text style={styles.footerText}>
-                Don't have an account?{" "}
-                <Text style={styles.footerLink}>Create Account</Text>
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => handleModeSwitch("signIn")}>
-              <Text style={styles.footerText}>
-                Already have an account?{" "}
-                <Text style={styles.footerLink}>Login</Text>
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => setMode("signUp")}>
+            <Text style={styles.footerText}>
+              Don't have an account?{" "}
+              <Text style={styles.footerLink}>Create Account</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
