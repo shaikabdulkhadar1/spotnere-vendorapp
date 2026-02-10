@@ -3,7 +3,7 @@
  * Displays vendor profile and settings
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -11,6 +11,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  BackHandler,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
@@ -94,6 +96,55 @@ const ProfileScreen = ({ onLogout }) => {
   const handleBackFromHelpCenter = () => {
     setShowHelpCenter(false);
   };
+
+  // Handle Android back button for component screens
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const hasComponentScreenOpen =
+      showBookingsList ||
+      showManageProfile ||
+      showPasswordSecurity ||
+      showAboutUs ||
+      showHelpCenter;
+
+    if (!hasComponentScreenOpen) {
+      return;
+    }
+
+    const backAction = () => {
+      // Go back one step by closing the current component screen
+      if (showHelpCenter) {
+        handleBackFromHelpCenter();
+      } else if (showAboutUs) {
+        handleBackFromAboutUs();
+      } else if (showPasswordSecurity) {
+        handleBackFromPasswordSecurity();
+      } else if (showManageProfile) {
+        handleBackFromManageProfile();
+      } else if (showBookingsList) {
+        handleBackFromBookings();
+      }
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [
+    showBookingsList,
+    showManageProfile,
+    showPasswordSecurity,
+    showAboutUs,
+    showHelpCenter,
+  ]);
 
   // Show HelpCenterScreen if selected
   if (showHelpCenter) {

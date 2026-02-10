@@ -258,62 +258,78 @@ export const AppProvider = ({ children }) => {
     try {
       setIsLoading(true);
 
+      let currentUserData = null;
+
       // Check user cache first
       const cachedUser = await AsyncStorage.getItem(CACHE_KEYS.USER);
       if (cachedUser) {
         const parsedUser = JSON.parse(cachedUser);
         setUser(parsedUser);
-
-        // Check bookings cache if user has place_id
-        if (parsedUser?.place_id) {
-          const cacheHit = await checkBookingsCache();
-          if (!cacheHit) {
-            // Cache miss - fetch fresh bookings data
-            await loadBookings(true);
-          }
-        } else {
-          setBookingsData({
-            total: 0,
-            pending: 0,
-            today: 0,
-            loading: false,
-            bookings: [],
-          });
-        }
+        currentUserData = parsedUser;
       } else {
         // No user cache - fetch fresh user data
         const currentUser = await getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
+          currentUserData = currentUser;
           await AsyncStorage.setItem(
             CACHE_KEYS.USER,
             JSON.stringify(currentUser)
           );
+        }
+      }
 
-          // Check bookings cache if user has place_id
-          if (currentUser?.place_id) {
-            const cacheHit = await checkBookingsCache();
-            if (!cacheHit) {
-              // Cache miss - fetch fresh bookings data
-              await loadBookings(true);
+      // Load bookings and place data if user has place_id
+      if (currentUserData?.place_id) {
+        // Check bookings cache
+        const bookingsCacheHit = await checkBookingsCache();
+        if (!bookingsCacheHit) {
+          // Cache miss - fetch fresh bookings data
+          await loadBookings(true);
+        }
+
+        // Check place cache first
+        const placeCacheHit = await checkPlaceCache();
+        if (!placeCacheHit) {
+          // Cache miss - fetch fresh place data directly
+          try {
+            const { data, error } = await supabase
+              .from("places")
+              .select("*")
+              .eq("id", currentUserData.place_id)
+              .single();
+
+            if (error) {
+              console.error("Error fetching place data:", error);
+            } else if (data) {
+              setPlaceData(data);
+              // Cache the place data
+              await AsyncStorage.setItem(CACHE_KEYS.PLACE, JSON.stringify(data));
+              await AsyncStorage.setItem(
+                CACHE_KEYS.PLACE_TIMESTAMP,
+                Date.now().toString()
+              );
             }
-          } else {
-            setBookingsData({
-              total: 0,
-              pending: 0,
-              today: 0,
-              loading: false,
-              bookings: [],
-            });
+          } catch (error) {
+            console.error("Error loading place data:", error);
           }
         }
+      } else {
+        setBookingsData({
+          total: 0,
+          pending: 0,
+          today: 0,
+          loading: false,
+          bookings: [],
+        });
+        setPlaceData(null);
       }
     } catch (error) {
       console.error("Error loading HomeScreen data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [checkBookingsCache, loadBookings]);
+  }, [checkBookingsCache, loadBookings, checkPlaceCache]);
 
   // Check cache for place data
   const checkPlaceCache = useCallback(async () => {

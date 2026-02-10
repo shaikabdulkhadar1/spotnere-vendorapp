@@ -3,7 +3,7 @@
  * Displays vendor bookings
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  BackHandler,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
@@ -39,6 +41,27 @@ const BookingsScreen = () => {
       return dateB - dateA; // Reversed to show newest first
     });
   }, [bookingsData?.bookings]);
+
+  // Handle Android back button when BookingDetailsScreen is showing
+  useEffect(() => {
+    if (Platform.OS !== "android" || !selectedBooking) {
+      return;
+    }
+
+    const backAction = () => {
+      setSelectedBooking(null);
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [selectedBooking]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Date not available";

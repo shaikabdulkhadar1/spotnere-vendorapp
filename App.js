@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, ActivityIndicator } from "react-native";
+import { StyleSheet, View, ActivityIndicator, BackHandler, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import LoginScreen from "./screens/LoginScreen";
@@ -10,6 +10,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import BottomNavBar from "./components/BottomNavBar";
 import PlaceDetailsOnboarding from "./components/PlaceDetailsOnboarding";
 import BankDetailsOnboarding from "./components/BankDetailsOnboarding";
+import ReviewsScreen from "./screens/ReviewsScreen";
 import { colors } from "./constants/colors";
 import { isLoggedIn } from "./utils/auth";
 import { AppProvider, useApp } from "./contexts/AppContext";
@@ -32,10 +33,45 @@ function AppContent() {
   const [showBankOnboarding, setShowBankOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const [showReviewsScreen, setShowReviewsScreen] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
   }, []);
+
+  // Handle Android back button
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const backAction = () => {
+      // If ReviewsScreen is showing (component-like screen), go back one step
+      if (showReviewsScreen) {
+        handleBackFromReviews();
+        return true; // Prevent default back behavior
+      }
+
+      // If on HomeScreen, exit app
+      if (activeTab === "home") {
+        BackHandler.exitApp();
+        return true; // Prevent default back behavior
+      }
+
+      // For other screens from screens folder (BookingsScreen, VenduDetailsScreen, ProfileScreen), go to HomeScreen
+      setActiveTab("home");
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => {
+      backHandler.remove();
+    };
+  }, [activeTab, showReviewsScreen]);
 
   useEffect(() => {
     // Check onboarding status when user becomes available
@@ -224,10 +260,40 @@ function AppContent() {
     console.log("Back pressed");
   };
 
+  const handleNavigateToBookings = () => {
+    setShowReviewsScreen(false);
+    setActiveTab("bookings");
+  };
+
+  const handleNavigateToReviews = () => {
+    setShowReviewsScreen(true);
+  };
+
+  const handleBackFromReviews = () => {
+    setShowReviewsScreen(false);
+  };
+
+  const handleTabChange = (tab) => {
+    // Hide ReviewsScreen when switching tabs via navbar
+    if (showReviewsScreen) {
+      setShowReviewsScreen(false);
+    }
+    setActiveTab(tab);
+  };
+
   const renderScreen = () => {
+    if (showReviewsScreen) {
+      return <ReviewsScreen onBack={handleBackFromReviews} />;
+    }
+
     switch (activeTab) {
       case "home":
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onNavigateToBookings={handleNavigateToBookings}
+            onNavigateToReviews={handleNavigateToReviews}
+          />
+        );
       case "bookings":
         return <BookingsScreen />;
       case "venduDetails":
@@ -235,7 +301,12 @@ function AppContent() {
       case "profile":
         return <ProfileScreen onLogout={handleLogout} />;
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onNavigateToBookings={handleNavigateToBookings}
+            onNavigateToReviews={handleNavigateToReviews}
+          />
+        );
     }
   };
 
@@ -274,7 +345,7 @@ function AppContent() {
                   {renderScreen()}
                   <BottomNavBar
                     activeTab={activeTab}
-                    onTabChange={setActiveTab}
+                    onTabChange={handleTabChange}
                   />
                 </>
               )

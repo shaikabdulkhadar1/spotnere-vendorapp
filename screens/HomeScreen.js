@@ -23,8 +23,8 @@ import NotificationsModal from "../components/NotificationsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
-const HomeScreen = () => {
-  const { user, bookingsData, loadHomeScreenData } = useApp();
+const HomeScreen = ({ onNavigateToBookings, onNavigateToReviews }) => {
+  const { user, bookingsData, placeData, loadHomeScreenData } = useApp();
   const [revenueTimeRange, setRevenueTimeRange] = React.useState("Past month");
   const [revenueData, setRevenueData] = React.useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = React.useState(null);
@@ -311,9 +311,13 @@ const HomeScreen = () => {
 
           <TouchableOpacity
             style={[styles.cardBase, styles.cardSmall]}
-            onPress={() =>
-              handleMetricPress("Bookings", "View upcoming bookings")
-            }
+            onPress={() => {
+              if (onNavigateToBookings) {
+                onNavigateToBookings();
+              } else {
+                handleMetricPress("Bookings", "View upcoming bookings");
+              }
+            }}
             activeOpacity={0.8}
           >
             <View style={styles.cardHeader}>
@@ -351,9 +355,14 @@ const HomeScreen = () => {
             )}
           </TouchableOpacity>
 
-          <View
+          <TouchableOpacity
             style={[styles.cardBase, styles.cardSmall, styles.ratingCard]}
-            onStartShouldSetResponder={() => true}
+            onPress={() => {
+              if (onNavigateToReviews) {
+                onNavigateToReviews();
+              }
+            }}
+            activeOpacity={0.8}
           >
             <View style={styles.cardHeader}>
               <Ionicons
@@ -474,7 +483,7 @@ const HomeScreen = () => {
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.cardBase, styles.cardSmall]}
@@ -492,7 +501,11 @@ const HomeScreen = () => {
               />
               <Text style={styles.cardLabel}>Avg. Price</Text>
             </View>
-            <Text style={styles.cardValue}>$94</Text>
+            <Text style={styles.cardValue}>
+              {placeData?.avg_price
+                ? `$${parseFloat(placeData.avg_price).toFixed(0)}`
+                : "$0"}
+            </Text>
             <Text style={styles.cardHint}>per booking</Text>
           </TouchableOpacity>
         </View>
