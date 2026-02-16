@@ -17,58 +17,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../constants/colors";
 import { fonts } from "../constants/fonts";
 import { useApp } from "../contexts/AppContext";
-import { supabase } from "../config/supabase";
 
 const ReviewsScreen = ({ onBack }) => {
-  const { user, placeData } = useApp();
-  const [reviews, setReviews] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+  const { user, reviewsData, loadReviews } = useApp();
 
   React.useEffect(() => {
-    loadReviews();
-  }, [user?.place_id]);
-
-  const loadReviews = async () => {
-    if (!user?.place_id) {
-      setLoading(false);
-      return;
+    if (user?.place_id) {
+      loadReviews();
     }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch reviews from reviews table
-      // Assuming reviews table has: id, place_id, user_id, rating, comment, created_at
-      // And we join with users table to get user names
-      const { data, error: fetchError } = await supabase
-        .from("reviews")
-        .select(
-          `
-          *,
-          users:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `,
-        )
-        .eq("place_id", user.place_id)
-        .order("created_at", { ascending: false });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setReviews(data || []);
-    } catch (err) {
-      console.error("Error loading reviews:", err);
-      setError(err.message || "Failed to load reviews");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user?.place_id, loadReviews]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -112,9 +69,11 @@ const ReviewsScreen = ({ onBack }) => {
 
   const renderReviewItem = ({ item }) => {
     const userName =
-      item.users?.first_name || item.users?.last_name
-        ? `${item.users.first_name || ""} ${item.users.last_name || ""}`.trim()
-        : item.users?.email || "Anonymous";
+      item.user?.first_name || item.user?.last_name
+        ? `${item.user.first_name || ""} ${
+            item.user.last_name || ""
+          }`.trim()
+        : item.user?.email || "Anonymous";
 
     return (
       <View style={styles.reviewCard}>
@@ -127,9 +86,6 @@ const ReviewsScreen = ({ onBack }) => {
             </View>
             <View style={styles.reviewUserDetails}>
               <Text style={styles.reviewUserName}>{userName}</Text>
-              <Text style={styles.reviewDate}>
-                {formatDate(item.created_at)}
-              </Text>
             </View>
           </View>
           <View style={styles.ratingContainer}>
@@ -139,14 +95,14 @@ const ReviewsScreen = ({ onBack }) => {
             </Text>
           </View>
         </View>
-        {item.comment && (
-          <Text style={styles.reviewComment}>{item.comment}</Text>
+        {item.review && (
+          <Text style={styles.reviewComment}>{item.review}</Text>
         )}
       </View>
     );
   };
 
-  if (loading) {
+  if (reviewsData.loading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -164,7 +120,8 @@ const ReviewsScreen = ({ onBack }) => {
     );
   }
 
-  if (error) {
+  if (reviewsData.error) {
+    const error = reviewsData.error;
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -190,11 +147,9 @@ const ReviewsScreen = ({ onBack }) => {
     );
   }
 
+  const reviews = reviewsData.reviews || [];
   const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) /
-        reviews.length
-      : 0;
+    reviewsData.summary?.average != null ? reviewsData.summary.average : 0;
 
   return (
     <View style={styles.container}>
@@ -246,7 +201,9 @@ const ReviewsScreen = ({ onBack }) => {
         <FlatList
           data={reviews}
           renderItem={renderReviewItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) =>
+            item.user_id ? `${item.user_id}-${index}` : String(index)
+          }
           contentContainerStyle={styles.reviewsList}
           showsVerticalScrollIndicator={false}
         />

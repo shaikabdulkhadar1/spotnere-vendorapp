@@ -23,6 +23,8 @@ const CACHE_KEYS = {
   BOOKINGS_TIMESTAMP: "@app_cache_bookings_timestamp",
   PLACE: "@app_cache_place",
   PLACE_TIMESTAMP: "@app_cache_place_timestamp",
+  REVIEWS: "@app_cache_reviews",
+  REVIEWS_TIMESTAMP: "@app_cache_reviews_timestamp",
 };
 
 // Cache expiration time (5 minutes)
@@ -38,6 +40,12 @@ export const AppProvider = ({ children }) => {
     bookings: [],
   });
   const [placeData, setPlaceData] = useState(null);
+  const [reviewsData, setReviewsData] = useState({
+    reviews: [],
+    summary: { average: 0, count: 0 },
+    loading: true,
+    error: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Load user data
@@ -253,6 +261,159 @@ export const AppProvider = ({ children }) => {
     [user?.place_id, checkBookingsCache]
   );
 
+  // Check cache for reviews data
+  const checkReviewsCache = useCallback(async () => {
+    try {
+      const cachedReviews = await AsyncStorage.getItem(CACHE_KEYS.REVIEWS);
+      const cachedTimestamp = await AsyncStorage.getItem(
+        CACHE_KEYS.REVIEWS_TIMESTAMP,
+      );
+
+      if (cachedReviews && cachedTimestamp) {
+        const timestamp = parseInt(cachedTimestamp, 10);
+        const now = Date.now();
+
+        // Use cache if it's still valid
+        if (now - timestamp < CACHE_EXPIRY) {
+          const parsed = JSON.parse(cachedReviews);
+          setReviewsData({
+            reviews: parsed.reviews || [],
+            summary: parsed.summary || { average: 0, count: 0 },
+            loading: false,
+            error: null,
+          });
+          return true; // Cache hit
+        }
+      }
+      return false; // Cache miss
+    } catch (error) {
+      console.error("Error checking reviews cache:", error);
+      return false;
+    }
+  }, []);
+
+  // Load reviews data with caching
+  const loadReviews = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        if (!user?.place_id) {
+          setReviewsData({
+            reviews: [],
+            summary: { average: 0, count: 0 },
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+
+        // Check cache first if not forcing refresh
+        if (!forceRefresh) {
+          const cacheHit = await checkReviewsCache();
+          if (cacheHit) {
+            return; // Data already loaded from cache
+          }
+        }
+
+        setReviewsData((prev) => ({ ...prev, loading: true, error: null }));
+
+        // Fetch base reviews (schema: user_id, place_id, review, rating)
+        const { data: reviewData, error: fetchError } = await supabase
+          .from("reviews")
+          .select("user_id, place_id, review, rating")
+          .eq("place_id", user.place_id);
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        const reviews = reviewData || [];
+
+        if (reviews.length === 0) {
+          const emptyPayload = {
+            reviews: [],
+            summary: { average: 0, count: 0 },
+          };
+          setReviewsData({
+            ...emptyPayload,
+            loading: false,
+            error: null,
+          });
+          await AsyncStorage.setItem(
+            CACHE_KEYS.REVIEWS,
+            JSON.stringify(emptyPayload),
+          );
+          await AsyncStorage.setItem(
+            CACHE_KEYS.REVIEWS_TIMESTAMP,
+            Date.now().toString(),
+          );
+          return;
+        }
+
+        // Fetch user details for all unique user_ids
+        const userIds = Array.from(
+          new Set(reviews.map((r) => r.user_id).filter(Boolean)),
+        );
+
+        let usersMap = {};
+        if (userIds.length > 0) {
+          const { data: usersData, error: usersError } = await supabase
+            .from("users")
+            .select("id, first_name, last_name, email")
+            .in("id", userIds);
+
+          if (usersError) {
+            throw usersError;
+          }
+
+          (usersData || []).forEach((u) => {
+            usersMap[u.id] = u;
+          });
+        }
+
+        const merged = reviews.map((review) => ({
+          ...review,
+          user: usersMap[review.user_id] || null,
+        }));
+
+        const count = merged.length;
+        const totalRating = merged.reduce(
+          (sum, r) => sum + (r.rating || 0),
+          0,
+        );
+        const average = count > 0 ? totalRating / count : 0;
+
+        const payload = {
+          reviews: merged,
+          summary: { average, count },
+        };
+
+        setReviewsData({
+          ...payload,
+          loading: false,
+          error: null,
+        });
+
+        // Cache reviews data
+        await AsyncStorage.setItem(
+          CACHE_KEYS.REVIEWS,
+          JSON.stringify(payload),
+        );
+        await AsyncStorage.setItem(
+          CACHE_KEYS.REVIEWS_TIMESTAMP,
+          Date.now().toString(),
+        );
+      } catch (error) {
+        console.error("Error loading reviews:", error);
+        setReviewsData((prev) => ({
+          ...prev,
+          loading: false,
+          error: error.message || "Failed to load reviews",
+        }));
+      }
+    },
+    [user?.place_id, checkReviewsCache],
+  );
+
   // Load data for HomeScreen - checks cache first, then fetches if needed
   const loadHomeScreenData = useCallback(async () => {
     try {
@@ -279,7 +440,7 @@ export const AppProvider = ({ children }) => {
         }
       }
 
-      // Load bookings and place data if user has place_id
+      // Load bookings, place, and reviews data if user has place_id
       if (currentUserData?.place_id) {
         // Check bookings cache
         const bookingsCacheHit = await checkBookingsCache();
@@ -314,6 +475,13 @@ export const AppProvider = ({ children }) => {
             console.error("Error loading place data:", error);
           }
         }
+
+        // Check reviews cache
+        const reviewsCacheHit = await checkReviewsCache();
+        if (!reviewsCacheHit) {
+          // Cache miss - fetch fresh reviews data
+          await loadReviews(true);
+        }
       } else {
         setBookingsData({
           total: 0,
@@ -323,13 +491,19 @@ export const AppProvider = ({ children }) => {
           bookings: [],
         });
         setPlaceData(null);
+        setReviewsData({
+          reviews: [],
+          summary: { average: 0, count: 0 },
+          loading: false,
+          error: null,
+        });
       }
     } catch (error) {
       console.error("Error loading HomeScreen data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [checkBookingsCache, loadBookings, checkPlaceCache]);
+  }, [checkBookingsCache, loadBookings, checkPlaceCache, checkReviewsCache, loadReviews]);
 
   // Check cache for place data
   const checkPlaceCache = useCallback(async () => {
@@ -411,6 +585,8 @@ export const AppProvider = ({ children }) => {
         CACHE_KEYS.BOOKINGS_TIMESTAMP,
         CACHE_KEYS.PLACE,
         CACHE_KEYS.PLACE_TIMESTAMP,
+        CACHE_KEYS.REVIEWS,
+        CACHE_KEYS.REVIEWS_TIMESTAMP,
       ]);
     } catch (error) {
       console.error("Error clearing cache:", error);
@@ -421,7 +597,8 @@ export const AppProvider = ({ children }) => {
   const refreshData = useCallback(async () => {
     await loadUser();
     await loadBookings(true);
-  }, [loadUser, loadBookings]);
+    await loadReviews(true);
+  }, [loadUser, loadBookings, loadReviews]);
 
   // Initialize with empty state - HomeScreen will load data when needed
   useEffect(() => {
@@ -433,10 +610,12 @@ export const AppProvider = ({ children }) => {
     user,
     bookingsData,
     placeData,
+    reviewsData,
     isLoading,
     loadUser,
     loadBookings,
     loadPlace,
+    loadReviews,
     loadHomeScreenData,
     refreshData,
     clearCache,

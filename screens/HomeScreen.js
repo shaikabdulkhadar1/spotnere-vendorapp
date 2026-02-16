@@ -24,7 +24,8 @@ import NotificationsModal from "../components/NotificationsModal";
 const screenWidth = Dimensions.get("window").width;
 
 const HomeScreen = ({ onNavigateToBookings, onNavigateToReviews }) => {
-  const { user, bookingsData, placeData, loadHomeScreenData } = useApp();
+  const { user, bookingsData, placeData, reviewsData, loadHomeScreenData, loadReviews } =
+    useApp();
   const [revenueTimeRange, setRevenueTimeRange] = React.useState("Past month");
   const [revenueData, setRevenueData] = React.useState(null);
   const [selectedDataPoint, setSelectedDataPoint] = React.useState(null);
@@ -38,6 +39,18 @@ const HomeScreen = ({ onNavigateToBookings, onNavigateToReviews }) => {
   React.useEffect(() => {
     loadHomeScreenData();
   }, [loadHomeScreenData]);
+
+  React.useEffect(() => {
+    if (user?.place_id) {
+      loadReviews();
+    }
+  }, [user?.place_id, loadReviews]);
+
+  const ratingAverage =
+    reviewsData.summary?.average != null ? reviewsData.summary.average : 0;
+  const ratingCount =
+    reviewsData.summary?.count != null ? reviewsData.summary.count : 0;
+  const ratingLoading = reviewsData.loading;
 
   const generateRevenueData = React.useCallback((timeRange) => {
     let labels = [];
@@ -478,8 +491,18 @@ const HomeScreen = ({ onNavigateToBookings, onNavigateToReviews }) => {
                 {/* Hollow center overlay */}
                 <View style={styles.pieChartHollowCenter} />
                 <View style={styles.ratingCenterContent}>
-                  <Text style={styles.ratingValue}>4.8</Text>
-                  <Text style={styles.ratingHint}>312 reviews</Text>
+                  <Text style={styles.ratingValue}>
+                    {ratingLoading ? "--" : ratingAverage.toFixed(1)}
+                  </Text>
+                  <Text style={styles.ratingHint}>
+                    {ratingLoading
+                      ? "Loading..."
+                      : ratingCount === 0
+                      ? "No reviews yet"
+                      : `${ratingCount} ${
+                          ratingCount === 1 ? "review" : "reviews"
+                        }`}
+                  </Text>
                 </View>
               </View>
             </View>
